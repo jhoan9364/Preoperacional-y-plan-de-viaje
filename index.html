@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preoperacional / Plan de Viaje · Transhicol</title>
+    <meta name="description" content="Inspección preoperacional y plan de viaje de TRANSHICOL S.A.S. para conductores.">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --brand-yellow: #FFD22E;
+            --brand-yellow-2: #F0B800;
+            --brand-ink: #181818;
+            --navy: #0f172a;
+            --bg: #f6f7f9;
+            --line: #e8eaee;
+            --muted: #6b7280;
+            --good: #16a34a; --good-bg:#ecfdf5;
+            --bad: #dc2626;  --bad-bg:#fef2f2;
+            --warn:#d97706;  --warn-bg:#fffbeb;
+            --na:  #64748b;  --na-bg:#f1f5f9;
+        }
+        * { -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background:
+                radial-gradient(1200px 600px at 100% -10%, rgba(255,210,46,.16), transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, rgba(15,23,42,.06), transparent 55%),
+                var(--bg);
+            color: var(--brand-ink);
+        }
+        h1, h2, h3, .font-display { font-family: 'Sora', 'Inter', sans-serif; letter-spacing: -0.01em; }
+
+        .fade-up { animation: fadeUp .45s cubic-bezier(.25,.46,.45,.94) both; }
+        @keyframes fadeUp { from { opacity:0; transform: translateY(14px); } to { opacity:1; transform: translateY(0); } }
+
+        /* Inputs */
+        .field-input {
+            background:#fff; border:1px solid var(--line); border-radius:.7rem;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        .field-input:focus {
+            outline:none; border-color: var(--brand-yellow-2);
+            box-shadow: 0 0 0 4px rgba(255,210,46,.20);
+        }
+        .field-input.is-error { border-color:#f87171; box-shadow:0 0 0 4px rgba(248,113,113,.18); }
+
+        .btn-brand {
+            background: linear-gradient(180deg, var(--brand-yellow) 0%, var(--brand-yellow-2) 100%);
+            color: var(--navy); border:1px solid #d6a917;
+            box-shadow: 0 6px 16px rgba(255,210,46,.35), inset 0 1px 0 rgba(255,255,255,.55);
+            transition: transform .15s, box-shadow .15s, opacity .15s;
+        }
+        .btn-brand:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(255,210,46,.5); }
+        .btn-brand:disabled { opacity:.6; cursor:not-allowed; }
+        .btn-ghost {
+            background:#fff; border:1px solid var(--line); color:#334155;
+            transition: background .15s, border-color .15s, transform .15s;
+        }
+        .btn-ghost:hover { background:#f8fafc; border-color:#cbd5e1; transform:translateY(-1px); }
+
+        /* Section card */
+        .sec-card {
+            background:#fff; border:1px solid var(--line); border-radius:1.1rem;
+            box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 10px 28px -22px rgba(16,24,40,.2);
+            overflow:hidden;
+        }
+        .sec-head {
+            display:flex; align-items:center; gap:11px; padding:14px 16px;
+            border-bottom:1px solid var(--line-2, #f1f3f6); background:linear-gradient(180deg,#ffffff,#fcfcfa);
+        }
+        .sec-head-ic {
+            width:38px;height:38px;border-radius:11px;flex-shrink:0;
+            display:flex;align-items:center;justify-content:center;font-size:16px;
+            background:#181818;color:var(--brand-yellow);
+        }
+        .sec-head-t { font-family:'Sora',sans-serif; font-weight:800; font-size:15px; color:#181818; line-height:1.15; }
+        .sec-head-s { font-size:11.5px; color:var(--muted); margin-top:2px; }
+
+        /* Checklist rows */
+        .chk-row {
+            display:flex; align-items:center; justify-content:space-between; gap:12px;
+            padding:11px 14px; border-bottom:1px solid #f3f4f6;
+        }
+        .chk-row:last-child { border-bottom:0; }
+        .chk-row.is-missing { background:#fff7f7; }
+        .chk-row-label { font-size:13px; font-weight:600; color:#2b3038; line-height:1.3; flex:1; min-width:0; }
+        .chk-seg { display:inline-flex; gap:5px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
+        .chk-opt {
+            cursor:pointer; user-select:none; font-size:11.5px; font-weight:800; letter-spacing:.01em;
+            padding:7px 11px; border-radius:.6rem; border:1.5px solid var(--line); background:#fff; color:#64748b;
+            transition: all .14s ease; white-space:nowrap; line-height:1;
+        }
+        .chk-opt:hover { border-color:#cbd5e1; }
+        .chk-opt.sel-good { background:var(--good-bg); border-color:var(--good); color:var(--good); }
+        .chk-opt.sel-bad  { background:var(--bad-bg);  border-color:var(--bad);  color:var(--bad); }
+        .chk-opt.sel-warn { background:var(--warn-bg); border-color:var(--warn); color:var(--warn); }
+        .chk-opt.sel-na   { background:var(--na-bg);   border-color:#cbd5e1;     color:var(--na); }
+        .chk-opt.sel-neutral { background:#181818; border-color:#181818; color:var(--brand-yellow); }
+
+        /* Documentos con fecha de vencimiento */
+        .doc-controls { display:flex; align-items:center; gap:8px; flex-shrink:0; flex-wrap:wrap; justify-content:flex-end; }
+        .doc-date {
+            font-size:12.5px; font-weight:600; color:#1e293b; padding:7px 10px; border-radius:.6rem;
+            min-width:140px;
+        }
+        .doc-date.doc-date-off { opacity:.4; }
+        .doc-date:disabled { cursor:not-allowed; }
+        .doc-na {
+            cursor:pointer; user-select:none; font-size:11.5px; font-weight:800; letter-spacing:.01em;
+            padding:7px 11px; border-radius:.6rem; border:1.5px solid var(--line); background:#fff; color:#64748b;
+            transition:all .14s ease; white-space:nowrap; line-height:1;
+        }
+        .doc-na:hover { border-color:#cbd5e1; }
+        .doc-na.is-on { background:var(--na-bg); border-color:#cbd5e1; color:var(--na); }
+        .chk-row.doc-expired { background:#fff7f7; }
+
+        /* Bulk action chip */
+        .bulk-chip {
+            cursor:pointer; font-size:10.5px; font-weight:700; padding:4px 9px; border-radius:99px;
+            border:1px dashed #cbd5e1; color:#64748b; background:#fff; transition:all .14s;
+        }
+        .bulk-chip:hover { border-color:var(--good); color:var(--good); background:var(--good-bg); }
+
+        /* Progress */
+        .progress-track { background:#e9ebef; }
+        .progress-fill { background: linear-gradient(90deg, var(--brand-yellow-2), var(--brand-yellow)); }
+
+        /* Sticky doc bar */
+        .docbar { backdrop-filter: blur(8px); }
+
+        /* Result donut / pills */
+        .pill { display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:800; padding:5px 12px; border-radius:99px; }
+
+        /* Done check anim */
+        .done-anim { position:relative; width:92px; height:92px; margin:0 auto 16px; display:flex; align-items:center; justify-content:center; }
+        .done-ring { position:absolute; inset:0; border-radius:50%; background: radial-gradient(circle, rgba(16,185,129,.18), rgba(16,185,129,.04)); }
+        .done-ring::before, .done-ring::after { content:""; position:absolute; inset:0; border-radius:50%; border:2px solid rgba(16,185,129,.45); animation: ring 2.2s ease-out infinite; }
+        .done-ring::after { animation-delay:1.1s; }
+        @keyframes ring { 0%{transform:scale(.7);opacity:.8;} 100%{transform:scale(1.6);opacity:0;} }
+        .done-check { position:relative; width:70px;height:70px;border-radius:50%; background:linear-gradient(135deg,#34d399,#059669); color:#fff; display:flex;align-items:center;justify-content:center;font-size:2rem; box-shadow:0 12px 26px -8px rgba(5,150,105,.55); animation: pop .6s cubic-bezier(.2,.8,.3,1.5) both; }
+        .done-check.is-warn { background:linear-gradient(135deg,#fbbf24,#d97706); box-shadow:0 12px 26px -8px rgba(217,119,6,.55); }
+        @keyframes pop { 0%{transform:scale(.2) rotate(-30deg);opacity:0;} 60%{transform:scale(1.18) rotate(8deg);} 100%{transform:scale(1) rotate(0);opacity:1;} }
+
+        .scroll-mt { scroll-margin-top: 92px; }
+
+        /* ════════ Comodidad en celular (todos los conductores diligencian en móvil) ════════ */
+        @media (max-width: 640px) {
+            body { padding-bottom: 2.5rem; }
+            /* En cada fila, las opciones / la fecha bajan a una segunda línea a lo ancho. */
+            .chk-row { flex-wrap: wrap; align-items: flex-start; gap: 9px; padding: 12px 13px; }
+            .chk-row-label { flex: 1 1 100%; font-size: 13.5px; }
+            .chk-seg { width: 100%; justify-content: flex-start; gap: 7px; }
+            .chk-opt { flex: 1 1 auto; text-align: center; min-width: 84px; padding: 10px 10px; font-size: 12px; }
+            .doc-controls { width: 100%; justify-content: flex-start; gap: 8px; }
+            .doc-date { flex: 1 1 auto; min-width: 0; padding: 10px 12px; font-size: 14px; }
+            .doc-na { padding: 10px 14px; font-size: 12.5px; }
+            .bulk-chip { padding: 6px 11px; font-size: 11.5px; }
+            /* Campos de texto un poco más altos para el dedo. */
+            .field-input { font-size: 16px; } /* 16px evita el zoom automático de iOS */
+            .sec-head { padding: 13px 14px; }
+            .sec-head-t { font-size: 14.5px; }
+        }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen pb-10">
+
+    <!-- Insignia Modo Demo -->
+    <div id="demo-badge" class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-40 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.14em] text-amber-900 bg-amber-300 border border-amber-500 rounded-full px-4 py-1.5 shadow-lg">
+        <i class="fa-solid fa-flask"></i> Modo demo · no se guardará nada
+    </div>
+
+    <!-- ════════════════ STICKY DOC BAR (visible en los formularios) ════════════════ -->
+    <div id="docbar" class="docbar hidden sticky top-0 z-30 bg-white/85 border-b border-gray-200/80 shadow-sm">
+        <div class="max-w-3xl mx-auto px-4 py-2.5 flex items-center gap-3">
+            <img src="https://transhicol-manager.vercel.app/logo-transparente.svg" alt="Transhicol" class="h-8 w-auto object-contain shrink-0">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <span id="docbar-step" class="text-[10px] font-black uppercase tracking-[.12em] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">Paso 1 de 2</span>
+                    <h2 id="docbar-title" class="font-display font-extrabold text-[#181818] text-sm md:text-base truncate">Inspección Preoperacional</h2>
+                </div>
+                <div class="progress-track rounded-full h-1.5 mt-1.5 overflow-hidden">
+                    <div id="docbar-progress" class="progress-fill h-1.5 rounded-full transition-all duration-300" style="width:50%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-3xl mx-auto px-3 sm:px-4 pt-4">
+
+        <!-- ════════════════ PANTALLA: BIENVENIDA ════════════════ -->
+        <section id="screen-welcome" class="fade-up">
+            <div class="sec-card p-6 sm:p-9 text-center">
+                <img src="https://transhicol-manager.vercel.app/logo-transparente.svg" alt="Transhicol" class="h-20 md:h-24 mx-auto object-contain drop-shadow-[0_8px_20px_rgba(15,23,42,.12)]">
+                <span class="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.16em] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-3 py-1 mt-4">
+                    <i class="fa-solid fa-clipboard-check"></i> Seguridad Vial · SGI
+                </span>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-[#181818] mt-3">Preoperacional / Plan de Viaje</h1>
+                <p class="text-gray-500 mt-2 text-sm md:text-base max-w-lg mx-auto">
+                    Diligencia tu inspección preoperacional antes de cada servicio. Al terminar podrás continuar
+                    de inmediato con el plan de viaje.
+                </p>
+
+                <div class="grid sm:grid-cols-2 gap-3 mt-7 text-left">
+                    <div class="rounded-2xl border border-gray-200 p-4 bg-gradient-to-b from-white to-gray-50/50">
+                        <div class="w-10 h-10 rounded-xl bg-[#181818] text-[#FFD22E] flex items-center justify-center mb-2"><i class="fa-solid fa-truck-front"></i></div>
+                        <h3 class="font-bold text-sm text-[#181818]">1. Inspección Preoperacional</h3>
+                        <p class="text-xs text-gray-500 mt-1">Conductor, documentos y estado del vehículo (eléctrico, llantas, frenos, accesorios y tanque).</p>
+                    </div>
+                    <div class="rounded-2xl border border-gray-200 p-4 bg-gradient-to-b from-white to-gray-50/50">
+                        <div class="w-10 h-10 rounded-xl bg-[#181818] text-[#FFD22E] flex items-center justify-center mb-2"><i class="fa-solid fa-route"></i></div>
+                        <h3 class="font-bold text-sm text-[#181818]">2. Plan de Viaje</h3>
+                        <p class="text-xs text-gray-500 mt-1">Ruta, evaluación de riesgo, estado de la vía y compromisos de seguridad vial.</p>
+                    </div>
+                </div>
+
+                <button id="btn-start-preop" class="btn-brand w-full mt-7 font-bold rounded-xl text-sm px-5 py-3.5 flex items-center justify-center gap-2">
+                    Iniciar Preoperacional <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <button id="btn-only-plan" class="w-full mt-2.5 text-xs font-semibold text-gray-500 hover:text-gray-800 py-2 transition-colors">
+                    Solo diligenciar Plan de Viaje
+                </button>
+                <p class="text-center text-[11px] text-gray-400 mt-3"><i class="fa-solid fa-lock"></i> Tip: escribe “DEMO” en tu nombre para practicar sin guardar.</p>
+            </div>
+        </section>
+
+        <!-- ════════════════ PANTALLA: PREOPERACIONAL ════════════════ -->
+        <section id="screen-preop" class="hidden">
+            <form id="form-preop" class="space-y-4" novalidate>
+                <!-- secciones inyectadas por JS -->
+            </form>
+            <div class="flex flex-col sm:flex-row gap-3 mt-5">
+                <button type="button" id="btn-preop-cancel" class="btn-ghost order-2 sm:order-1 sm:w-auto font-semibold rounded-xl text-sm px-5 py-3 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i> Volver
+                </button>
+                <button type="button" id="btn-preop-submit" class="btn-brand order-1 sm:order-2 flex-1 font-bold rounded-xl text-sm px-5 py-3.5 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> Enviar Preoperacional
+                </button>
+            </div>
+        </section>
+
+        <!-- ════════════════ PANTALLA: PREOP COMPLETADO (puente) ════════════════ -->
+        <section id="screen-preop-done" class="hidden">
+            <div class="sec-card p-6 sm:p-9 text-center">
+                <div class="done-anim"><span class="done-ring"></span><span id="preop-done-check" class="done-check"><i class="fa-solid fa-check"></i></span></div>
+                <h2 class="text-2xl font-extrabold text-[#181818]">Preoperacional registrado</h2>
+                <p id="preop-done-msg" class="text-gray-500 mt-2 max-w-lg mx-auto">Tu inspección quedó guardada correctamente.</p>
+
+                <div class="flex flex-wrap items-center justify-center gap-2 mt-5">
+                    <span id="preop-done-apto" class="pill"></span>
+                    <span id="preop-done-nc" class="pill" style="background:var(--bad-bg);color:var(--bad)"></span>
+                </div>
+
+                <div class="mt-7 rounded-2xl border border-amber-200 bg-amber-50/70 p-5 text-left max-w-lg mx-auto">
+                    <div class="flex items-center gap-2 text-amber-800 font-bold text-sm"><i class="fa-solid fa-route"></i> ¿Vas a viajar ahora?</div>
+                    <p class="text-xs text-amber-700/90 mt-1">Continúa con el <b>Plan de Viaje</b> sin salir de la página. Ya copiamos tus datos del preoperacional.</p>
+                    <button id="btn-go-plan" class="btn-brand w-full mt-4 font-bold rounded-xl text-sm px-5 py-3.5 flex items-center justify-center gap-2">
+                        Continuar con Plan de Viaje <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+                <button id="btn-finish-after-preop" class="w-full mt-3 text-xs font-semibold text-gray-500 hover:text-gray-800 py-2 transition-colors">
+                    No por ahora · Finalizar
+                </button>
+            </div>
+        </section>
+
+        <!-- ════════════════ PANTALLA: PLAN DE VIAJE ════════════════ -->
+        <section id="screen-plan" class="hidden">
+            <form id="form-plan" class="space-y-4" novalidate>
+                <!-- secciones inyectadas por JS -->
+            </form>
+            <div class="flex flex-col sm:flex-row gap-3 mt-5">
+                <button type="button" id="btn-plan-cancel" class="btn-ghost order-2 sm:order-1 sm:w-auto font-semibold rounded-xl text-sm px-5 py-3 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-arrow-left"></i> Volver
+                </button>
+                <button type="button" id="btn-plan-submit" class="btn-brand order-1 sm:order-2 flex-1 font-bold rounded-xl text-sm px-5 py-3.5 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> Enviar Plan de Viaje
+                </button>
+            </div>
+        </section>
+
+        <!-- ════════════════ PANTALLA: GRACIAS ════════════════ -->
+        <section id="screen-thanks" class="hidden">
+            <div class="sec-card p-8 sm:p-10 text-center">
+                <div class="done-anim"><span class="done-ring"></span><span class="done-check"><i class="fa-solid fa-check"></i></span></div>
+                <h2 id="thanks-title" class="text-2xl md:text-3xl font-extrabold text-[#181818]">¡Listo, buen viaje!</h2>
+                <p id="thanks-msg" class="text-gray-500 mt-3 max-w-lg mx-auto leading-relaxed">Tus registros quedaron guardados correctamente.</p>
+                <div id="thanks-meta" class="hidden mt-6 inline-flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-5 py-3 text-left">
+                    <span class="w-10 h-10 rounded-xl bg-[#181818] text-[#FFD22E] flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-user-check"></i></span>
+                    <div>
+                        <div id="thanks-meta-name" class="text-sm font-extrabold text-[#181818] leading-tight"></div>
+                        <div id="thanks-meta-sub" class="text-xs text-gray-500"></div>
+                    </div>
+                </div>
+                <div class="mt-7">
+                    <button id="btn-new" class="btn-ghost font-bold rounded-xl text-sm px-6 py-3 inline-flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> Diligenciar otro
+                    </button>
+                </div>
+                <p class="text-[11px] text-gray-400 mt-7">TRANSHICOL S.A.S · Sistema de Gestión Integral · Seguridad Vial (PESV)</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm text-center fade-up">
+            <div id="modal-icon" class="mx-auto w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mb-3">
+                <i class="fa-solid fa-circle-exclamation text-2xl"></i>
+            </div>
+            <p id="modal-text" class="text-base mb-5 text-gray-700"></p>
+            <button id="modal-close-btn" class="btn-brand font-bold py-2.5 px-6 rounded-xl">Entendido</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // =====================================================================
+        //  SUPABASE — el formato escribe en el MISMO proyecto que
+        //  transhicol-manager. Solo puede INSERTAR (migración 0015 + RLS).
+        //  La anon key es pública por diseño; es seguro tenerla aquí.
+        // =====================================================================
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+        const SUPABASE_URL = 'https://fogwynnmbnipsvuxacxw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvZ3d5bm5tYm5pcHN2dXhhY3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNDMwNDAsImV4cCI6MjA4OTYxOTA0MH0.RRUuljAe18p7FVE4SAjejMCv-4K2s5Dt31aZnnW6d6Y';
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        /* ════════════════ CATÁLOGOS DE LAS LISTAS DE CHEQUEO ════════════════
+           tone: 'inspect' (CUMPLE/NO CUMPLE/NO APLICA → verde/rojo/gris)
+                 'doc'     (VIGENTE/VENCIDO/NO APLICA   → verde/rojo/gris)
+                 'estado'  (BUENO/REGULAR/MALO          → verde/ámbar/rojo)
+                 'siono'   (SI/NO                       → selección neutra) */
+        const PREOP_GRIDS = [
+            { key:'documentos_conductor', titulo:'Documentos del conductor', icon:'fa-id-card', tone:'doc',
+              mode:'fecha', allowNA:false, items:[
+                'Curso Manejo Defensivo','Curso Transporte de Mercancías Peligrosas','Curso Trabajo en Alturas',
+                'Curso Manejo de Extintores','Curso de Primeros Auxilios','Curso Mecánica Básica'] },
+            { key:'documentos_vehiculo', titulo:'Documentos del vehículo', icon:'fa-folder-open', tone:'doc',
+              mode:'fecha', allowNA:true,
+              // Estos dos NO usan fecha: siguen siendo toggle CUMPLE/NO CUMPLE/NO APLICA.
+              optsAt:{ 0:['CUMPLE','NO CUMPLE','NO APLICA'], 1:['CUMPLE','NO CUMPLE','NO APLICA'] },
+              items:[
+                'Tarjeta Propiedad Cabezote','Tarjeta Propiedad Tanque','SOAT','Revisión Técnico-Mecánica',
+                'Póliza Todo Riesgo','Póliza Hidrocarburos','Inspección Quinta Rueda','Inspección King Pin',
+                'Inspección Línea de Vida','Inspección Arnés/Eslinga','Prueba Hidrostática','Tabla de Aforo'] },
+            { key:'revision_electrica', titulo:'Revisión eléctrica', icon:'fa-bolt', tone:'inspect',
+              opts:['CUMPLE','NO CUMPLE','NO APLICA'], items:[
+                'Direccionales Delanteras','Luces Reversa Cabezote','Luces Reversa Tanque','Luces Direccionales Tanque',
+                'Luces de Parqueo','Luz de Freno Cabezote','Luces Medias','Luces Altas','Luces Laterales'] },
+            { key:'llantas', titulo:'Llantas', icon:'fa-circle-dot', tone:'inspect',
+              opts:['CUMPLE','NO CUMPLE'], items:[
+                'Labrado / Desgaste (mín. 3 mm de huella)','Presión (90 a 100 PSI)','Sin fisuras profundas ni abultamientos'] },
+            { key:'sistema_frenos', titulo:'Sistema de frenos', icon:'fa-car-burst', tone:'inspect',
+              opts:['CUMPLE','NO CUMPLE'], items:[
+                'Sin fugas de aire y/o líquidos','Válvula Relay','Líquidos en cantidad adecuada','Cámaras',
+                'Candados y Bandas','Freno de Motor'] },
+            { key:'accesorios', titulo:'Accesorios y seguridad', icon:'fa-screwdriver-wrench', tone:'inspect',
+              opts:['CUMPLE','NO CUMPLE','NO APLICA'], items:[
+                'Panorámico','Limpia Brisas','Nivel Agua Limpia Brisas','Espejos Retrovisores',
+                'Pitos (general y alarma de reversa)','Revise King Pin / Quinta Rueda (fisuras, deterioro)',
+                'Patas de Anclaje','Tanque y líneas de combustible sin fugas','Tablero de Instrumentos',
+                'Cinturones de Seguridad','Equipos de Carretera (gato, copa, palanca, llaves…)',
+                'Equipo de Contingencia, Botiquín y Extintores',
+                'Elementos de Protección Personal (casco, guantes, botas, gafas, protector auditivo)'] },
+            { key:'tanque_carroceria', titulo:'Tanque o carrocería', icon:'fa-truck-droplet', tone:'inspect',
+              opts:['CUMPLE','NO CUMPLE','NO APLICA'], items:[
+                'Estado exterior (pintura, golpes, fracturas)','Soportes, muelles y balancines','Guardapolvos',
+                'Pasarela con líneas de vida y malla antideslizante'] },
+        ];
+
+        const PLAN_GRIDS = [
+            { key:'encabezado', titulo:'Encabezado del plan', icon:'fa-list-check', tone:'siono',
+              opts:['SI','NO'], alertWhen:['NO','NO'], items:[
+                'Preoperacional diligenciado','Se encuentra vigente la licencia'] },
+            { key:'evaluacion_riesgo', titulo:'Evaluación de riesgo', icon:'fa-triangle-exclamation', tone:'siono',
+              opts:['SI','NO'],
+              alertWhen:['NO','NO','NO','NO','SI','SI','SI'], items:[
+                '¿Se compromete a transportar materiales/mercancías peligrosas en caravana?',
+                '¿Está familiarizado con la ruta?',
+                '¿Después del último viaje durmió al menos 5 horas?',
+                '¿Está cubierta por red celular la mayoría del viaje?',
+                '¿Tiene previsto manejar más de 10 horas seguidas en el viaje?',
+                '¿A esta hora lleva manejando más de 16 horas seguidas?',
+                '¿Hay probabilidades de secuestro o robo en la ruta?'] },
+            { key:'estados_via', titulo:'Estado de la vía', icon:'fa-road', tone:'estado',
+              opts:['BUENO','REGULAR','MALO'], alertWhen:['MALO','MALO'], items:[
+                '¿Cómo se encuentra el estado de la vía?',
+                '¿Cuáles son las condiciones meteorológicas y de visibilidad?'] },
+            { key:'compromisos', titulo:'Compromisos de seguridad vial', icon:'fa-handshake-angle', tone:'siono',
+              opts:['SI','NO'], alertWhen:Array(11).fill('NO'), items:[
+                '¿Se compromete a usar el cinturón de seguridad?',
+                '¿Se compromete a aplicar conocimientos de manejo defensivo?',
+                '¿Se compromete a respetar los límites de velocidad?',
+                '¿Se compromete a respetar a todos los actores viales?',
+                '¿Se compromete a respetar las señales de tránsito?',
+                '¿Se compromete a conducir libre de los efectos del alcohol y las drogas?',
+                '¿Se compromete a conducir en pro de la seguridad vial?',
+                '¿Se compromete a realizar sus pausas activas?',
+                '¿Se compromete a no llevar pasajeros?',
+                '¿Se compromete a no hablar por teléfono mientras conduce?',
+                'Conozco los procedimientos en caso de emergencia.'] },
+        ];
+
+        // Valores que cuentan como "no conforme" en el preoperacional
+        const NO_CONFORME = new Set(['NO CUMPLE','VENCIDO']);
+
+        // Color de la opción seleccionada según tone + valor
+        function optClass(tone, val) {
+            if (tone === 'siono') return 'sel-neutral';
+            if (val === 'NO APLICA') return 'sel-na';
+            if (val === 'CUMPLE' || val === 'VIGENTE' || val === 'BUENO') return 'sel-good';
+            if (val === 'NO CUMPLE' || val === 'VENCIDO' || val === 'MALO') return 'sel-bad';
+            if (val === 'REGULAR') return 'sel-warn';
+            return 'sel-neutral';
+        }
+
+        // --- ESTADO ---
+        const state = {
+            grids: {},        // { gridKey: { itemIndex: valor } }
+            preop: null,      // datos guardados del preoperacional (para encadenar/prefijar)
+            preopId: null,
+            lastLookup: null, // ultima cedula consultada (evita consultas repetidas)
+            lastVehiculoLookup: null, // ultima placa consultada (evita consultas repetidas)
+            licenciaVencida: false, // bloquea el envio del preoperacional
+            docDates: {},     // { gridKey: { itemIndex: { fecha:'', na:false } } }
+            docsVencidos: false, // bloquea el envio si hay documentos vencidos
+        };
+        const isDemo = () => {
+            const v = (document.getElementById('pf-conductor_nombre')?.value || '').toLowerCase();
+            return v.includes('demo');
+        };
+
+        // --- DOM helpers ---
+        const $ = (id) => document.getElementById(id);
+
+        function generateUUID() {
+            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+                return crypto.randomUUID();
+            }
+            // Fallback para contextos no seguros (como HTTP por IP local)
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+        const screens = ['welcome','preop','preop-done','plan','thanks'];
+        function show(name) {
+            screens.forEach(s => $('screen-' + s).classList.add('hidden'));
+            const el = $('screen-' + name);
+            el.classList.remove('hidden');
+            el.classList.add('fade-up');
+            // Docbar solo en formularios
+            const inForm = (name === 'preop' || name === 'plan');
+            $('docbar').classList.toggle('hidden', !inForm);
+            if (name === 'preop') { $('docbar-step').textContent = 'Paso 1 de 2'; $('docbar-title').textContent = 'Inspección Preoperacional'; $('docbar-progress').style.width = '50%'; }
+            if (name === 'plan')  { $('docbar-step').textContent = 'Paso 2 de 2'; $('docbar-title').textContent = 'Plan de Viaje'; $('docbar-progress').style.width = '100%'; }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function todayISO() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        }
+
+        // Dias enteros que faltan para una fecha ISO (negativo si ya pasó).
+        function daysUntil(iso) {
+            if (!iso) return null;
+            const hoy = new Date(todayISO() + 'T00:00:00');
+            const fin = new Date(iso + 'T00:00:00');
+            if (isNaN(fin)) return null;
+            return Math.round((fin - hoy) / 86400000);
+        }
+        // Fecha legible: "12 de junio de 2026"
+        function fmtFechaLarga(iso) {
+            try { return new Date(iso + 'T00:00:00').toLocaleDateString('es-CO', { day:'2-digit', month:'long', year:'numeric' }); }
+            catch { return iso; }
+        }
+        // Número con separador de miles (formato Colombia: 154.300)
+        function formatMiles(raw) {
+            const digits = String(raw || '').replace(/\D/g, '');
+            if (!digits) return '';
+            return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+        // Placa de tanque: si la unidad no tiene tanque (N/A, "No aplica", etc.)
+        // se guarda VACÍA (no se almacena lo que el conductor escriba en ese caso).
+        function normTanque(raw) {
+            const t = String(raw || '').trim().toUpperCase();
+            if (!t) return '';
+            const naSet = new Set(['N/A','NA','N.A','N.A.','NO APLICA','NOAPLICA','NO TIENE','SIN TANQUE','NINGUNA','NINGUNO']);
+            return naSet.has(t) ? '' : t;
+        }
+
+        // --- Modal ---
+        function showModal(text, type='warn') {
+            $('modal-text').textContent = text;
+            const icon = $('modal-icon');
+            if (type === 'error') {
+                icon.className = 'mx-auto w-12 h-12 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mb-3';
+                icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation text-2xl"></i>';
+            } else {
+                icon.className = 'mx-auto w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mb-3';
+                icon.innerHTML = '<i class="fa-solid fa-circle-exclamation text-2xl"></i>';
+            }
+            $('modal').classList.remove('hidden');
+        }
+        $('modal-close-btn').addEventListener('click', () => $('modal').classList.add('hidden'));
+
+        /* ════════════════ AUTOCOMPLETAR POR CÉDULA + CONTROL DE LICENCIA ════════════════
+           El formato solo puede INSERTAR (RLS). Para recuperar el último dato del
+           conductor usamos la función segura public.pv_lookup_conductor (migración
+           0016), que devuelve SOLO el último registro de esa cédula. */
+        async function lookupConductor(raw) {
+            const ced = String(raw || '').replace(/\D/g, '');
+            if (ced.length < 4) return;
+            if (state.lastLookup === ced) return;   // no repetir la misma consulta
+            state.lastLookup = ced;
+            try {
+                const { data, error } = await supabase.rpc('pv_lookup_conductor', { p_identificacion: ced });
+                if (error) { console.warn('lookup conductor:', error); return; }
+                const row = Array.isArray(data) ? data[0] : data;
+                if (row) applyConductorLookup(row);
+            } catch (err) { console.warn('lookup conductor:', err); }
+        }
+
+        function applyConductorLookup(row) {
+            // Nombre del conductor: autocompletar al consultar cédula
+            if (row.conductor_nombre) {
+                const n = $('pf-conductor_nombre');
+                if (n) n.value = row.conductor_nombre;
+            }
+
+            // Seguridad social: siempre traer el último dato (editable por el conductor)
+            let segLleno = false;
+            [['eps', row.eps], ['arl', row.arl], ['afp', row.afp]].forEach(([id, val]) => {
+                if (val) { const el = $('pf-' + id); if (el) { el.value = val; segLleno = true; } }
+            });
+            $('seg-hint')?.classList.toggle('hidden', !segLleno);
+            $('seg-hint')?.classList.toggle('inline-flex', segLleno);
+
+            // Licencia: traer último vencimiento y categoría para detectar vigencia
+            if (row.licencia_categoria) { const c = $('pf-licencia_categoria'); if (c) c.value = row.licencia_categoria; }
+            if (row.licencia_vencimiento) { const v = $('pf-licencia_vencimiento'); if (v) v.value = row.licencia_vencimiento; }
+
+            // Documentos del conductor:
+            if (row.documentos_conductor && Array.isArray(row.documentos_conductor)) {
+                row.documentos_conductor.forEach((doc) => {
+                    const idx = PREOP_GRIDS[0].items.indexOf(doc.item);
+                    if (idx !== -1) {
+                        const s = docState('documentos_conductor', idx);
+                        if (doc.valor === 'NO APLICA') {
+                            s.na = true;
+                            s.fecha = '';
+                        } else if (doc.fecha) {
+                            s.na = false;
+                            s.fecha = doc.fecha;
+                        } else {
+                            return;
+                        }
+                        const rowEl = document.querySelector(`.chk-row[data-rowgrid="documentos_conductor"][data-rowi="${idx}"]`);
+                        const dateEl = rowEl?.querySelector('.doc-date');
+                        const naBtn = rowEl?.querySelector('.doc-na');
+                        if (dateEl) {
+                            dateEl.value = s.fecha;
+                            dateEl.disabled = s.na;
+                            dateEl.classList.toggle('doc-date-off', s.na);
+                        }
+                        if (naBtn) naBtn.classList.toggle('is-on', s.na);
+                    }
+                });
+            }
+
+            const hint = $('lookup-hint');
+            hint?.classList.remove('hidden'); hint?.classList.add('inline-flex');
+
+            evaluateLicencia();
+            evaluateAllDocs();
+        }
+
+        /* ════════════════ AUTOCOMPLETAR POR PLACA DEL VEHÍCULO ════════════════ */
+        async function lookupVehiculo(raw) {
+            const placa = String(raw || '').replace(/\s/g, '').toUpperCase();
+            if (placa.length < 3) return;
+            if (state.lastVehiculoLookup === placa) return; // evitar consultas repetidas
+            state.lastVehiculoLookup = placa;
+            try {
+                const { data, error } = await supabase.rpc('pv_lookup_vehiculo', { p_placa: placa });
+                if (error) { console.warn('lookup vehiculo:', error); return; }
+                const row = Array.isArray(data) ? data[0] : data;
+                if (row) applyVehiculoLookup(row);
+            } catch (err) { console.warn('lookup vehiculo:', err); }
+        }
+
+        function applyVehiculoLookup(row) {
+            // Placa del tanque / trailer
+            if (row.placa_tanque) {
+                const el = $('pf-placa_tanque');
+                if (el) el.value = row.placa_tanque;
+            }
+
+            // Documentos del vehículo:
+            if (row.documentos_vehiculo && Array.isArray(row.documentos_vehiculo)) {
+                row.documentos_vehiculo.forEach((doc) => {
+                    const idx = PREOP_GRIDS[1].items.indexOf(doc.item);
+                    if (idx !== -1) {
+                        // Ítems toggle en documentos_vehiculo (ej: Tarjetas de propiedad en optsAt)
+                        if (PREOP_GRIDS[1].optsAt && PREOP_GRIDS[1].optsAt[idx]) {
+                            if (doc.valor) {
+                                selectOpt('documentos_vehiculo', idx, doc.valor);
+                            }
+                        } else {
+                            // Ítems de fecha
+                            const s = docState('documentos_vehiculo', idx);
+                            if (doc.valor === 'NO APLICA') {
+                                s.na = true;
+                                s.fecha = '';
+                            } else if (doc.fecha) {
+                                s.na = false;
+                                s.fecha = doc.fecha;
+                            } else {
+                                return;
+                            }
+                            const rowEl = document.querySelector(`.chk-row[data-rowgrid="documentos_vehiculo"][data-rowi="${idx}"]`);
+                            const dateEl = rowEl?.querySelector('.doc-date');
+                            const naBtn = rowEl?.querySelector('.doc-na');
+                            if (dateEl) {
+                                dateEl.value = s.fecha;
+                                dateEl.disabled = s.na;
+                                dateEl.classList.toggle('doc-date-off', s.na);
+                            }
+                            if (naBtn) naBtn.classList.toggle('is-on', s.na);
+                        }
+                    }
+                });
+            }
+
+            const hint = $('veh-hint');
+            hint?.classList.remove('hidden'); hint?.classList.add('inline-flex');
+
+            evaluateAllDocs();
+        }
+
+        // Evalúa la fecha de vencimiento de la licencia y muestra el aviso adecuado.
+        // - Vencida  → rojo + bloquea el envío (state.licenciaVencida = true)
+        // - ≤ 2 días → aviso ámbar de que está por vencer
+        // - > 2 días → sin aviso
+        function evaluateLicencia() {
+            const input = $('pf-licencia_vencimiento');
+            const wrap = $('lic-msg-wrap');
+            if (!input || !wrap) return;
+            state.licenciaVencida = false;
+            input.classList.remove('is-error');
+            const val = input.value;
+            if (!val) { wrap.classList.add('hidden'); return; }
+
+            const dias = daysUntil(val);
+            if (dias === null) { wrap.classList.add('hidden'); return; }
+
+            if (dias < 0) {
+                state.licenciaVencida = true;
+                input.classList.add('is-error');
+                showLicMsg('error', `Tu licencia está <b>VENCIDA</b> (venció el ${fmtFechaLarga(val)}). Actualiza la nueva fecha de vencimiento para poder guardar el preoperacional.`);
+            } else if (dias === 0) {
+                showLicMsg('warn', `Atención: tu licencia <b>vence HOY</b> (${fmtFechaLarga(val)}). Realiza el trámite de renovación cuanto antes.`);
+            } else if (dias <= 2) {
+                showLicMsg('warn', `Atención: tu licencia vence en <b>${dias} día${dias === 1 ? '' : 's'}</b> (${fmtFechaLarga(val)}). Realiza el trámite de renovación.`);
+            } else {
+                wrap.classList.add('hidden');
+            }
+        }
+
+        function showLicMsg(type, html) {
+            const wrap = $('lic-msg-wrap'), box = $('lic-msg');
+            if (!wrap || !box) return;
+            wrap.classList.remove('hidden');
+            if (type === 'error') {
+                box.style.cssText = 'background:#fef2f2;color:#b91c1c;border:1px solid #fecaca';
+                box.innerHTML = `<i class="fa-solid fa-triangle-exclamation mt-0.5"></i><span>${html}</span>`;
+            } else {
+                box.style.cssText = 'background:#fffbeb;color:#b45309;border:1px solid #fde68a';
+                box.innerHTML = `<i class="fa-solid fa-circle-exclamation mt-0.5"></i><span>${html}</span>`;
+            }
+        }
+
+        /* ════════════════ RENDER GENÉRICO DE UNA LISTA DE CHEQUEO ════════════════ */
+        function renderGrid(grid) {
+            if (grid.mode === 'fecha') return renderDocGrid(grid);
+            state.grids[grid.key] = state.grids[grid.key] || {};
+            const showBulk = grid.opts.length >= 2; // ofrecer "marcar todo" con la 1ª opción
+            const rows = grid.items.map((label, i) => {
+                const opts = grid.opts.map(o =>
+                    `<span class="chk-opt" data-grid="${grid.key}" data-i="${i}" data-val="${o}">${o}</span>`
+                ).join('');
+                return `<div class="chk-row" data-rowgrid="${grid.key}" data-rowi="${i}">
+                            <span class="chk-row-label">${label}</span>
+                            <span class="chk-seg">${opts}</span>
+                        </div>`;
+            }).join('');
+            
+            let bulkVal = grid.opts[0];
+            let bulkText = `Todo ${grid.opts[0]}`;
+            if (grid.key === 'evaluacion_riesgo') {
+                bulkVal = 'OK';
+                bulkText = 'Todo OK';
+            }
+
+            return `<div class="sec-card scroll-mt" id="sec-${grid.key}">
+                        <div class="sec-head">
+                            <div class="sec-head-ic"><i class="fa-solid ${grid.icon}"></i></div>
+                            <div class="flex-1 min-w-0">
+                                <div class="sec-head-t">${grid.titulo}</div>
+                                <div class="sec-head-s">${grid.items.length} ítems · toca una opción en cada uno</div>
+                            </div>
+                            ${showBulk ? `<span class="bulk-chip" data-bulk="${grid.key}" data-val="${bulkVal}"><i class="fa-solid fa-check-double"></i> ${bulkText}</span>` : ''}
+                        </div>
+                        <div>${rows}</div>
+                    </div>`;
+        }
+
+        /* ════════════════ LISTA DE DOCUMENTOS POR FECHA DE VENCIMIENTO ════════════════
+           Cada ítem se diligencia con su fecha de vencimiento. El valor (VIGENTE /
+           VENCIDO / NO APLICA) se DERIVA de la fecha para el dashboard y el conteo.
+           Misma regla que la licencia: vencido → rojo + bloquea; ≤2 días → avisa;
+           >2 días → nada. "No aplica" solo donde el documento puede no requerirse. */
+        function docState(gridKey, i) {
+            state.docDates[gridKey] = state.docDates[gridKey] || {};
+            state.docDates[gridKey][i] = state.docDates[gridKey][i] || { fecha:'', na:false };
+            return state.docDates[gridKey][i];
+        }
+
+        function docValor(gridKey, i) {
+            const s = docState(gridKey, i);
+            if (s.na) return 'NO APLICA';
+            if (!s.fecha) return '';
+            const dias = daysUntil(s.fecha);
+            return (dias !== null && dias < 0) ? 'VENCIDO' : 'VIGENTE';
+        }
+
+        function renderDocGrid(grid) {
+            const rows = grid.items.map((label, i) => {
+                // Ítems especiales que usan toggle (optsAt) en lugar de fecha
+                if (grid.optsAt && grid.optsAt[i]) {
+                    state.grids[grid.key] = state.grids[grid.key] || {};
+                    const opts = grid.optsAt[i].map(o =>
+                        `<span class="chk-opt" data-grid="${grid.key}" data-i="${i}" data-val="${o}">${o}</span>`
+                    ).join('');
+                    return `<div class="chk-row" data-rowgrid="${grid.key}" data-rowi="${i}">
+                                <span class="chk-row-label">${label}</span>
+                                <span class="chk-seg">${opts}</span>
+                            </div>`;
+                }
+
+                // Ítems estándar de fecha
+                const s = docState(grid.key, i);
+                return `<div class="chk-row" data-rowgrid="${grid.key}" data-rowi="${i}">
+                            <span class="chk-row-label">${label}</span>
+                            <div class="doc-controls">
+                                <input type="date" class="doc-date field-input ${s.na?'doc-date-off':''}"
+                                       data-docdate="${grid.key}" data-i="${i}" ${s.na?'disabled':''} value="${s.fecha||''}">
+                                ${grid.allowNA ? `<span class="doc-na ${s.na?'is-on':''}" data-docna="${grid.key}" data-i="${i}">N/A</span>` : ''}
+                            </div>
+                        </div>`;
+            }).join('');
+
+            return `<div class="sec-card scroll-mt" id="sec-${grid.key}">
+                        <div class="sec-head">
+                            <div class="sec-head-ic"><i class="fa-solid ${grid.icon}"></i></div>
+                            <div class="flex-1 min-w-0">
+                                <div class="sec-head-t">${grid.titulo}</div>
+                                <div class="sec-head-s">${grid.items.length} documentos · ingresa su vencimiento</div>
+                            </div>
+                        </div>
+                        <div>${rows}</div>
+                        <div id="docmsg-${grid.key}" class="hidden p-4 bg-gray-50 border-t border-gray-150">
+                            <div class="doc-msg rounded-xl px-3.5 py-3 text-[13px] font-semibold flex items-start gap-2"></div>
+                        </div>
+                    </div>`;
+        }
+
+        function toggleDocNA(gridKey, i) {
+            const s = docState(gridKey, i);
+            s.na = !s.na;
+            if (s.na) s.fecha = '';
+            const row = document.querySelector(`.chk-row[data-rowgrid="${gridKey}"][data-rowi="${i}"]`);
+            const dateEl = row?.querySelector('.doc-date');
+            const naBtn = row?.querySelector('.doc-na');
+            if (dateEl) {
+                dateEl.value = '';
+                dateEl.disabled = s.na;
+                dateEl.classList.toggle('doc-date-off', s.na);
+                dateEl.classList.remove('is-error');
+            }
+            if (naBtn) naBtn.classList.toggle('is-on', s.na);
+            row?.classList.remove('is-missing', 'doc-expired');
+
+            evaluateAllDocs();
+        }
+
+        // Evalúa un grid de documentos individuales.
+        function evaluateDocGrid(grid) {
+            const expired = [], soon = [];
+            grid.items.forEach((label, i) => {
+                if (grid.optsAt && grid.optsAt[i]) return; // toggle, sin fecha
+                const s = docState(grid.key, i);
+                const row = document.querySelector(`.chk-row[data-rowgrid="${grid.key}"][data-rowi="${i}"]`);
+                const dateEl = row?.querySelector('.doc-date');
+                row?.classList.remove('is-missing', 'doc-expired');
+                dateEl?.classList.remove('is-error');
+                if (s.na || !s.fecha) return;
+                const dias = daysUntil(s.fecha);
+                if (dias === null) return;
+                if (dias < 0) { expired.push(label); dateEl?.classList.add('is-error'); row?.classList.add('doc-expired'); }
+                else if (dias <= 2) { soon.push({ label, dias }); }
+            });
+            const wrap = document.getElementById('docmsg-' + grid.key);
+            const box = wrap?.querySelector('.doc-msg');
+            if (wrap && box) {
+                if (expired.length) {
+                    box.style.cssText = 'background:#fef2f2;color:#b91c1c;border:1px solid #fecaca';
+                    box.innerHTML = `<i class="fa-solid fa-triangle-exclamation mt-0.5"></i><span>${expired.length === 1 ? 'Documento vencido' : 'Documentos vencidos'} — actualiza ${expired.length === 1 ? 'su fecha' : 'sus fechas'} para poder guardar: <b>${expired.join(', ')}</b>.</span>`;
+                    wrap.classList.remove('hidden');
+                } else if (soon.length) {
+                    box.style.cssText = 'background:#fffbeb;color:#b45309;border:1px solid #fde68a';
+                    const txt = soon.map(s => `<b>${s.label}</b> (${s.dias === 0 ? 'vence hoy' : `${s.dias} día${s.dias === 1 ? '' : 's'}`})`).join(', ');
+                    box.innerHTML = `<i class="fa-solid fa-circle-exclamation mt-0.5"></i><span>Próximos a vencer: ${txt}.</span>`;
+                    wrap.classList.remove('hidden');
+                } else {
+                    wrap.classList.add('hidden');
+                }
+            }
+            return { expired, soon };
+        }
+
+        // Evalúa todos los grids de documentos y actualiza el bloqueo global.
+        function evaluateAllDocs() {
+            const expiredAll = [];
+            PREOP_GRIDS.filter(g => g.mode === 'fecha').forEach(g => {
+                expiredAll.push(...evaluateDocGrid(g).expired);
+            });
+            state.docsVencidos = expiredAll.length > 0;
+            return expiredAll;
+        }
+
+        // Delegación de clicks para opciones y "marcar todo"
+        function wireGrids(rootEl) {
+            rootEl.addEventListener('click', (e) => {
+                const opt = e.target.closest('.chk-opt');
+                if (opt) {
+                    const { grid, i, val } = opt.dataset;
+                    selectOpt(grid, Number(i), val);
+                    return;
+                }
+                const na = e.target.closest('.doc-na');
+                if (na) {
+                    toggleDocNA(na.dataset.docna, Number(na.dataset.i));
+                    return;
+                }
+                const bulk = e.target.closest('.bulk-chip');
+                if (bulk) {
+                    const { bulk: gkey, val } = bulk.dataset;
+                    const gridDef = [...PREOP_GRIDS, ...PLAN_GRIDS].find(g => g.key === gkey);
+                    if (gkey === 'evaluacion_riesgo' && val === 'OK') {
+                        gridDef.items.forEach((_, idx) => {
+                            const optVal = idx < 4 ? 'SI' : 'NO';
+                            selectOpt(gkey, idx, optVal);
+                        });
+                    } else {
+                        gridDef.items.forEach((_, idx) => selectOpt(gkey, idx, val));
+                    }
+                }
+            });
+        }
+
+        function selectOpt(gridKey, i, val) {
+            state.grids[gridKey][i] = val;
+            const gridDef = [...PREOP_GRIDS, ...PLAN_GRIDS].find(g => g.key === gridKey);
+            const row = document.querySelector(`.chk-row[data-rowgrid="${gridKey}"][data-rowi="${i}"]`);
+            if (!row) return;
+            row.classList.remove('is-missing');
+            row.querySelectorAll('.chk-opt').forEach(o => {
+                o.className = 'chk-opt';
+                if (o.dataset.val === val) o.classList.add(optClass(gridDef.tone, val));
+            });
+        }
+
+        // Validación de un grid: todos los ítems con valor. Devuelve índice del 1º faltante o -1.
+        function firstMissing(gridKey, total) {
+            const st = state.grids[gridKey] || {};
+            for (let i = 0; i < total; i++) if (st[i] === undefined) return i;
+            return -1;
+        }
+
+        // Serializa un grid a [{item, valor}]  (los de fecha añaden { fecha })
+        function serializeGrid(gridDef) {
+            if (gridDef.mode === 'fecha') {
+                return gridDef.items.map((item, i) => {
+                    if (gridDef.optsAt && gridDef.optsAt[i]) {
+                        const st = state.grids[gridDef.key] || {};
+                        return { item, valor: st[i] ?? '' };
+                    }
+                    const s = docState(gridDef.key, i);
+                    return { item, valor: docValor(gridDef.key, i), fecha: s.na ? '' : (s.fecha || '') };
+                });
+            }
+            const st = state.grids[gridDef.key] || {};
+            return gridDef.items.map((item, i) => ({ item, valor: st[i] ?? '' }));
+        }
+
+        /* ════════════════ CONSTRUCCIÓN DEL FORMULARIO PREOPERACIONAL ════════════════ */
+        function txt(id, label, { required=true, placeholder='', upper=true, type='text', value='', inputmode='' } = {}) {
+            return `<div>
+                        <label class="block mb-1.5 text-sm font-semibold text-gray-700">${label}${required?'*':''}</label>
+                        <input type="${type}" id="pf-${id}" data-req="${required}" data-label="${label}" value="${value}"
+                               ${inputmode?`inputmode="${inputmode}"`:''}
+                               class="field-input text-gray-900 text-sm block w-full p-3 ${upper&&type==='text'?'uppercase placeholder:normal-case':''}"
+                               placeholder="${placeholder}">
+                    </div>`;
+        }
+        function selectField(id, label, options, { required=true } = {}) {
+            const opts = ['<option value="">— Selecciona —</option>', ...options.map(o => `<option value="${o}">${o}</option>`)].join('');
+            return `<div>
+                        <label class="block mb-1.5 text-sm font-semibold text-gray-700">${label}${required?'*':''}</label>
+                        <select id="pf-${id}" data-req="${required}" data-label="${label}" class="field-input text-gray-900 text-sm block w-full p-3">${opts}</select>
+                    </div>`;
+        }
+
+        function buildPreopForm() {
+            state.lastLookup = null; state.licenciaVencida = false;
+            state.docDates = {}; state.docsVencidos = false;
+            const f = $('form-preop');
+            f.innerHTML = `
+                <div class="sec-card scroll-mt">
+                    <div class="sec-head"><div class="sec-head-ic"><i class="fa-solid fa-user"></i></div>
+                        <div class="flex-1 min-w-0"><div class="sec-head-t">Datos del conductor</div><div class="sec-head-s">Fecha, identificación y licencia</div></div>
+                        <span id="lookup-hint" class="hidden items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[.06em] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1"><i class="fa-solid fa-bolt"></i> Datos recuperados</span>
+                    </div>
+                    <div class="p-4 grid sm:grid-cols-2 gap-4">
+                        ${txt('fecha','Fecha',{type:'date'})}
+                        ${txt('conductor_identificacion','Identificación',{placeholder:'Cédula',upper:false,inputmode:'numeric'})}
+                        ${txt('conductor_nombre','Nombre del conductor',{placeholder:'Ej: Juan Pérez'})}
+                        ${txt('licencia_vencimiento','Licencia · fecha de vencimiento',{type:'date'})}
+                        ${selectField('licencia_categoria','Licencia · categoría',['B1','B2','B3','C1','C2','C3'])}
+                    </div>
+                    <div id="lic-msg-wrap" class="hidden px-4 pb-4">
+                        <div id="lic-msg" class="rounded-xl px-3.5 py-3 text-[13px] font-semibold flex items-start gap-2"></div>
+                    </div>
+                </div>
+
+                <div class="sec-card scroll-mt">
+                    <div class="sec-head"><div class="sec-head-ic"><i class="fa-solid fa-shield-heart"></i></div>
+                        <div class="flex-1 min-w-0"><div class="sec-head-t">Seguridad social</div><div class="sec-head-s">Afiliaciones vigentes</div></div>
+                        <span id="seg-hint" class="hidden items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[.06em] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1"><i class="fa-solid fa-wand-magic-sparkles"></i> Autocompletado · editable</span>
+                    </div>
+                    <div class="p-4 grid sm:grid-cols-3 gap-4">
+                        ${txt('eps','EPS',{placeholder:'EPS'})}
+                        ${txt('arl','ARL',{placeholder:'ARL'})}
+                        ${txt('afp','AFP',{placeholder:'Fondo de pensión'})}
+                    </div>
+                </div>
+
+                <div class="sec-card scroll-mt">
+                    <div class="sec-head"><div class="sec-head-ic"><i class="fa-solid fa-truck-front"></i></div>
+                        <div class="flex-1 min-w-0"><div class="sec-head-t">Datos del vehículo</div><div class="sec-head-s">Cabezote, tanque y kilometraje</div></div>
+                        <span id="veh-hint" class="hidden items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[.06em] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1"><i class="fa-solid fa-bolt"></i> Vehículo recuperado</span>
+                    </div>
+                    <div class="p-4 grid sm:grid-cols-3 gap-4">
+                        ${txt('placa_cabezote','Placa cabezote',{placeholder:'ABC123'})}
+                        ${txt('placa_tanque','Placa tanque / carrocería (si aplica)',{placeholder:'R12345',required:false})}
+                        ${txt('kilometraje_inicial','Kilometraje inicial',{placeholder:'Ej: 154.300',upper:false,inputmode:'numeric'})}
+                    </div>
+                </div>
+
+                ${PREOP_GRIDS.map(renderGrid).join('')}
+
+                <div class="sec-card scroll-mt">
+                    <div class="sec-head"><div class="sec-head-ic"><i class="fa-solid fa-pen-to-square"></i></div>
+                        <div><div class="sec-head-t">Novedades del día</div><div class="sec-head-s">Opcional · observaciones</div></div></div>
+                    <div class="p-4">
+                        <textarea id="pf-novedades" rows="3" class="field-input text-gray-900 text-sm block w-full p-3 uppercase placeholder:normal-case" placeholder="Si tienes observaciones del día, escríbelas aquí…"></textarea>
+                    </div>
+                </div>`;
+        }
+
+        /* ════════════════ CONSTRUCCIÓN DEL FORMULARIO PLAN DE VIAJE ════════════════ */
+        function buildPlanForm() {
+            const f = $('form-plan');
+            f.innerHTML = `
+                <div class="sec-card scroll-mt">
+                    <div class="sec-head"><div class="sec-head-ic"><i class="fa-solid fa-route"></i></div>
+                        <div class="flex-1 min-w-0"><div class="sec-head-t">Datos del viaje</div><div class="sec-head-s">Fecha, ruta y vehículo</div></div>
+                        <span id="plan-copy-hint" class="hidden items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[.06em] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1"><i class="fa-solid fa-copy"></i> Copiado del preoperacional</span>
+                    </div>
+                    <div class="p-4 grid sm:grid-cols-2 gap-4">
+                        ${txt('fecha','Fecha',{type:'date'})}
+                        ${txt('kilometraje_actual','Kilometraje actual',{placeholder:'Ej: 154.300',upper:false,inputmode:'numeric'})}
+                        ${txt('ruta_origen','Ruta · origen',{placeholder:'Ej: Yopal'})}
+                        ${txt('ruta_destino','Ruta · destino',{placeholder:'Ej: Barrancabermeja'})}
+                        ${txt('placa_cabezote','Placa cabezote',{placeholder:'ABC123'})}
+                        ${txt('placa_tanque','Placa tanque / carrocería (si aplica)',{placeholder:'R12345',required:false})}
+                        <div class="sm:col-span-2">${txt('conductor_nombre_plan','Nombre del conductor',{placeholder:'Ej: Juan Pérez'})}</div>
+                    </div>
+                </div>
+
+                ${PLAN_GRIDS.map(renderGrid).join('')}`;
+            // ids de los inputs del plan usan prefijo pf- igual que preop pero distintos nombres
+        }
+
+        /* ════════════════ VALIDACIÓN COMÚN ════════════════ */
+        function validateFields(formEl) {
+            // limpia errores previos
+            formEl.querySelectorAll('.is-error').forEach(el => el.classList.remove('is-error'));
+            const reqs = formEl.querySelectorAll('[data-req="true"]');
+            for (const el of reqs) {
+                if (!el.value.trim()) {
+                    el.classList.add('is-error');
+                    el.scrollIntoView({ behavior:'smooth', block:'center' });
+                    el.focus({ preventScroll:true });
+                    showModal(`Completa el campo: ${el.dataset.label}.`);
+                    return false;
+                }
+            }
+            return true;
+        }
+        function validateGrids(gridDefs) {
+            for (const g of gridDefs) {
+                // Grids por fecha: cada ítem necesita fecha o estar marcado "No aplica".
+                if (g.mode === 'fecha') {
+                    for (let i = 0; i < g.items.length; i++) {
+                        // Ítems toggle: deben tener una opción seleccionada.
+                        if (g.optsAt && g.optsAt[i]) {
+                            if (((state.grids[g.key] || {})[i]) === undefined) {
+                                const row = document.querySelector(`.chk-row[data-rowgrid="${g.key}"][data-rowi="${i}"]`);
+                                if (row) { row.classList.add('is-missing'); row.scrollIntoView({ behavior:'smooth', block:'center' }); }
+                                showModal(`Falta responder en "${g.titulo}": ${g.items[i]}`);
+                                return false;
+                            }
+                            continue;
+                        }
+                        const s = docState(g.key, i);
+                        if (!s.na && !s.fecha) {
+                            const row = document.querySelector(`.chk-row[data-rowgrid="${g.key}"][data-rowi="${i}"]`);
+                            if (row) { row.classList.add('is-missing'); row.scrollIntoView({ behavior:'smooth', block:'center' }); }
+                            showModal(`Falta la fecha de vencimiento en "${g.titulo}": ${g.items[i]}`);
+                            return false;
+                        }
+                    }
+                    continue;
+                }
+                const miss = firstMissing(g.key, g.items.length);
+                if (miss !== -1) {
+                    const row = document.querySelector(`.chk-row[data-rowgrid="${g.key}"][data-rowi="${miss}"]`);
+                    if (row) { row.classList.add('is-missing'); row.scrollIntoView({ behavior:'smooth', block:'center' }); }
+                    showModal(`Falta responder en "${g.titulo}": ${g.items[miss]}`);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /* ════════════════ NAVEGACIÓN ════════════════ */
+        $('btn-start-preop').addEventListener('click', () => { buildPreopForm(); show('preop'); });
+        $('btn-only-plan').addEventListener('click', () => { startPlan(false); });
+        $('btn-preop-cancel').addEventListener('click', () => show('welcome'));
+        $('btn-plan-cancel').addEventListener('click', () => { state.preop ? show('preop-done') : show('welcome'); });
+        $('btn-finish-after-preop').addEventListener('click', () => finishThanks(false));
+        $('btn-go-plan').addEventListener('click', () => startPlan(true));
+        $('btn-new').addEventListener('click', () => { resetAll(); show('welcome'); });
+
+        function resetAll() {
+            state.grids = {}; state.preop = null; state.preopId = null;
+            state.lastLookup = null; state.lastVehiculoLookup = null; state.licenciaVencida = false;
+            state.docDates = {}; state.docsVencidos = false;
+            buildPreopForm(); buildPlanForm();
+        }
+
+        /* ════════════════ ENVIAR PREOPERACIONAL ════════════════ */
+        $('btn-preop-submit').addEventListener('click', async () => {
+            if (!validateFields($('form-preop'))) return;
+            if (!validateGrids(PREOP_GRIDS)) return;
+
+            // Bloqueo: con la licencia vencida no se puede guardar hasta actualizar la fecha.
+            evaluateLicencia();
+            if (state.licenciaVencida) {
+                $('pf-licencia_vencimiento')?.scrollIntoView({ behavior:'smooth', block:'center' });
+                showModal('No puedes enviar el preoperacional con la licencia vencida. Actualiza la fecha de vencimiento de tu licencia para continuar.', 'error');
+                return;
+            }
+
+            // Bloqueo: documentos vencidos (conductor / vehículo). Se nombran cuáles.
+            const vencidos = evaluateAllDocs();
+            if (vencidos.length) {
+                document.querySelector('.chk-row.doc-expired')?.scrollIntoView({ behavior:'smooth', block:'center' });
+                showModal(`No puedes enviar el preoperacional con ${vencidos.length === 1 ? 'este documento vencido' : 'estos documentos vencidos'}: ${vencidos.join(', ')}. Actualiza ${vencidos.length === 1 ? 'su fecha de vencimiento' : 'sus fechas de vencimiento'} para continuar.`, 'error');
+                return;
+            }
+
+            const fp  = $('form-preop');
+            const get = (id) => (fp.querySelector('#pf-' + id)?.value || '').trim();
+            const up  = (id) => get(id).toUpperCase();
+
+            // Cálculo del resultado
+            let total = 0, nc = 0;
+            PREOP_GRIDS.forEach(g => {
+                serializeGrid(g).forEach(r => { total++; if (NO_CONFORME.has(r.valor)) nc++; });
+            });
+            const apto = nc === 0;
+
+            const payload = {
+                fecha: get('fecha') || todayISO(),
+                conductor_nombre: up('conductor_nombre'),
+                conductor_identificacion: get('conductor_identificacion'),
+                licencia_vencimiento: get('licencia_vencimiento') || null,
+                licencia_categoria: get('licencia_categoria'),
+                eps: up('eps'), arl: up('arl'), afp: up('afp'),
+                placa_cabezote: up('placa_cabezote'),
+                placa_tanque: normTanque(get('placa_tanque')),
+                kilometraje_inicial: get('kilometraje_inicial'),
+                documentos_conductor: serializeGrid(PREOP_GRIDS[0]),
+                documentos_vehiculo: serializeGrid(PREOP_GRIDS[1]),
+                revision_electrica: serializeGrid(PREOP_GRIDS[2]),
+                llantas: serializeGrid(PREOP_GRIDS[3]),
+                sistema_frenos: serializeGrid(PREOP_GRIDS[4]),
+                accesorios: serializeGrid(PREOP_GRIDS[5]),
+                tanque_carroceria: serializeGrid(PREOP_GRIDS[6]),
+                novedades: up('novedades'),
+                total_items: total,
+                items_no_conformes: nc,
+                apto,
+                user_agent: navigator.userAgent,
+            };
+
+            // Guarda los datos para encadenar/prefijar el plan
+            state.preop = {
+                fecha: payload.fecha,
+                conductor_nombre: payload.conductor_nombre,
+                placa_cabezote: payload.placa_cabezote,
+                placa_tanque: payload.placa_tanque,
+                kilometraje: payload.kilometraje_inicial,
+                licencia_vencimiento: payload.licencia_vencimiento,
+                apto, nc,
+            };
+
+            const btn = $('btn-preop-submit'); const orig = btn.innerHTML;
+
+            if (isDemo()) {
+                state.preopId = null;
+                renderPreopDone(true);
+                return;
+            }
+
+            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando…';
+            try {
+                const preopId = generateUUID();
+                payload.id = preopId;
+                const { error } = await supabase.from('pv_preoperacionales').insert(payload);
+                if (error) throw error;
+                state.preopId = preopId;
+                renderPreopDone(false);
+            } catch (err) {
+                console.error('Error guardando preoperacional:', err);
+                showModal('No pudimos registrar el preoperacional. Verifica tu conexión e inténtalo de nuevo.', 'error');
+                btn.disabled = false; btn.innerHTML = orig;
+            }
+        });
+
+        function renderPreopDone(demo) {
+            const { apto, nc } = state.preop;
+            const check = $('preop-done-check');
+            check.classList.toggle('is-warn', !apto);
+            $('preop-done-msg').innerHTML = demo
+                ? 'Estabas en <b>modo demo</b>: el preoperacional <b>no se guardó</b>. Así lo verá el conductor real.'
+                : 'Tu inspección quedó guardada correctamente.';
+            const aptoPill = $('preop-done-apto');
+            aptoPill.style.background = apto ? 'var(--good-bg)' : 'var(--warn-bg)';
+            aptoPill.style.color = apto ? 'var(--good)' : 'var(--warn)';
+            aptoPill.innerHTML = apto
+                ? '<i class="fa-solid fa-circle-check"></i> Vehículo apto'
+                : '<i class="fa-solid fa-triangle-exclamation"></i> Requiere atención';
+            const ncPill = $('preop-done-nc');
+            ncPill.style.display = nc > 0 ? 'inline-flex' : 'none';
+            ncPill.innerHTML = `<i class="fa-solid fa-xmark"></i> ${nc} ítem${nc===1?'':'s'} no conforme${nc===1?'':'s'}`;
+            show('preop-done');
+        }
+
+        /* ════════════════ INICIAR PLAN DE VIAJE (con prefill) ════════════════ */
+        function startPlan(fromPreop) {
+            buildPlanForm();
+            // IMPORTANTE: preop y plan comparten ids (pf-fecha, pf-placa_cabezote,
+            // pf-placa_tanque). Hay que escribir SOLO en el formulario del plan.
+            const fpl = $('form-plan');
+            const setP = (id, val) => { const el = fpl.querySelector('#pf-' + id); if (el) el.value = val; };
+            if (fromPreop && state.preop) {
+                // Copiar del preoperacional: misma fecha, placas y kilometraje.
+                setP('fecha', state.preop.fecha || '');
+                setP('kilometraje_actual', state.preop.kilometraje || '');
+                setP('placa_cabezote', state.preop.placa_cabezote || '');
+                // Placa del trailer/tanque: solo si el conductor la diligenció (si no, vacía).
+                setP('placa_tanque', state.preop.placa_tanque || '');
+                setP('conductor_nombre_plan', state.preop.conductor_nombre || '');
+                const hint = $('plan-copy-hint');
+                hint?.classList.remove('hidden'); hint?.classList.add('inline-flex');
+                // Encabezado: preoperacional diligenciado = SI; licencia vigente según fecha
+                selectOpt('encabezado', 0, 'SI');
+                const vence = state.preop.licencia_vencimiento;
+                if (vence) selectOpt('encabezado', 1, (vence >= todayISO()) ? 'SI' : 'NO');
+            } else {
+                setP('fecha', state.preop?.fecha || '');
+            }
+            show('plan');
+        }
+
+        /* ════════════════ ENVIAR PLAN DE VIAJE ════════════════ */
+        $('btn-plan-submit').addEventListener('click', async () => {
+            const fpl = $('form-plan');
+            if (!validateFields(fpl)) return;
+            if (!validateGrids(PLAN_GRIDS)) return;
+
+            // Acotado al formulario del plan (comparte ids con el preoperacional).
+            const get = (id) => (fpl.querySelector('#pf-' + id)?.value || '').trim();
+            const up  = (id) => get(id).toUpperCase();
+
+            // Conteo de alertas de riesgo
+            let alertas = 0;
+            PLAN_GRIDS.forEach(g => {
+                if (!g.alertWhen) return;
+                serializeGrid(g).forEach((r, i) => { if (r.valor === g.alertWhen[i]) alertas++; });
+            });
+            const riesgo_nivel = alertas === 0 ? 'BAJO' : alertas <= 2 ? 'MEDIO' : 'ALTO';
+
+            const payload = {
+                preoperacional_id: state.preopId || null,
+                fecha: get('fecha') || todayISO(),
+                kilometraje_actual: get('kilometraje_actual'),
+                conductor_nombre: up('conductor_nombre_plan'),
+                ruta_origen: up('ruta_origen'),
+                ruta_destino: up('ruta_destino'),
+                placa_cabezote: up('placa_cabezote'),
+                placa_tanque: normTanque(get('placa_tanque')),
+                encabezado: serializeGrid(PLAN_GRIDS[0]),
+                evaluacion_riesgo: serializeGrid(PLAN_GRIDS[1]),
+                estados_via: serializeGrid(PLAN_GRIDS[2]),
+                compromisos: serializeGrid(PLAN_GRIDS[3]),
+                alertas, riesgo_nivel,
+                user_agent: navigator.userAgent,
+            };
+
+            const btn = $('btn-plan-submit'); const orig = btn.innerHTML;
+
+            if (isDemoPlan()) { finishThanks(true); return; }
+
+            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando…';
+            try {
+                const { error } = await supabase.from('pv_planes_viaje').insert(payload);
+                if (error) throw error;
+                finishThanks(false);
+            } catch (err) {
+                console.error('Error guardando plan de viaje:', err);
+                showModal('No pudimos registrar el plan de viaje. Verifica tu conexión e inténtalo de nuevo.', 'error');
+                btn.disabled = false; btn.innerHTML = orig;
+            }
+        });
+
+        const isDemoPlan = () => ($('pf-conductor_nombre_plan')?.value || '').toLowerCase().includes('demo');
+
+        /* ════════════════ PANTALLA DE GRACIAS ════════════════ */
+        function finishThanks(demo) {
+            const nombre = (state.preop?.conductor_nombre)
+                || ($('pf-conductor_nombre_plan')?.value || '').trim().toUpperCase();
+            const first = (nombre || 'Conductor').split(/\s+/)[0];
+            $('thanks-title').textContent = demo ? 'Vista previa completada' : `¡Listo, ${first}!`;
+            $('thanks-msg').innerHTML = demo
+                ? 'Estabas en <b>modo demo</b>: nada se guardó en la base de datos. Así es como lo diligenciará un conductor real.'
+                : 'Tus registros quedaron guardados correctamente. Recuerda conducir en pro de la seguridad vial.';
+            if (nombre) {
+                $('thanks-meta-name').textContent = nombre;
+                const sub = state.preop
+                    ? `${state.preop.placa_cabezote || ''}${state.preop.apto ? ' · Vehículo apto' : ' · Requiere atención'}`
+                    : 'Plan de viaje';
+                $('thanks-meta-sub').textContent = sub;
+                $('thanks-meta').classList.remove('hidden');
+            } else {
+                $('thanks-meta').classList.add('hidden');
+            }
+            show('thanks');
+        }
+
+        // --- INIT ---
+        buildPreopForm();
+        buildPlanForm();
+        wireGrids($('form-preop'));
+        wireGrids($('form-plan'));
+        // Listeners globales (delegados): sobreviven a la reconstrucción de los formularios.
+        let lookupTimer = null;
+        let lookupVehiculoTimer = null;
+        document.addEventListener('input', (e) => {
+            const id = e.target.id;
+            // Badge demo
+            if (id === 'pf-conductor_nombre' || id === 'pf-conductor_nombre_plan') {
+                $('demo-badge').classList.toggle('hidden', !(isDemo() || isDemoPlan()));
+            }
+            // Kilometraje con separador de miles (preoperacional y plan)
+            if (id === 'pf-kilometraje_inicial' || id === 'pf-kilometraje_actual') {
+                e.target.value = formatMiles(e.target.value);
+            }
+            // Autocompletar por cédula (con pequeño retardo mientras escribe)
+            if (id === 'pf-conductor_identificacion') {
+                clearTimeout(lookupTimer);
+                lookupTimer = setTimeout(() => lookupConductor(e.target.value), 450);
+            }
+            // Autocompletar por placa del vehículo (con pequeño retardo mientras escribe)
+            if (id === 'pf-placa_cabezote') {
+                clearTimeout(lookupVehiculoTimer);
+                lookupVehiculoTimer = setTimeout(() => lookupVehiculo(e.target.value), 450);
+            }
+            // Reevaluar la licencia si el conductor edita la fecha de vencimiento
+            if (id === 'pf-licencia_vencimiento') evaluateLicencia();
+            // Fecha de vencimiento de un documento (conductor / vehículo)
+            if (e.target.classList?.contains('doc-date')) updateDocDate(e.target);
+        });
+        document.addEventListener('change', (e) => {
+            // Limpieza de espacios en blanco adicionales (evita guardar espacios repetidos o al inicio/final)
+            if (e.target.tagName === 'INPUT' && e.target.type === 'text') {
+                e.target.value = e.target.value.trim().replace(/\s+/g, ' ');
+            }
+            if (e.target.tagName === 'TEXTAREA') {
+                e.target.value = e.target.value.trim();
+            }
+
+            if (e.target.id === 'pf-conductor_identificacion') lookupConductor(e.target.value);
+            if (e.target.id === 'pf-placa_cabezote') lookupVehiculo(e.target.value);
+            if (e.target.id === 'pf-licencia_vencimiento') evaluateLicencia();
+            if (e.target.classList?.contains('doc-date')) updateDocDate(e.target);
+        });
+        function updateDocDate(el) {
+            const s = docState(el.dataset.docdate, Number(el.dataset.i));
+            s.fecha = el.value; s.na = false;
+            evaluateAllDocs();
+        }
+        show('welcome');
+    </script>
+</body>
+</html>
