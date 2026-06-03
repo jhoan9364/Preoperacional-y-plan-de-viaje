@@ -337,6 +337,12 @@
 
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // =====================================================================
+        //  POWER AUTOMATE WEBHOOK URL
+        //  Reemplaza esta URL con la que te genere Power Automate al guardar tu flujo
+        // =====================================================================
+        const POWER_AUTOMATE_WEBHOOK_URL = '';
+
         /* ════════════════ CATÁLOGOS DE LAS LISTAS DE CHEQUEO ════════════════
            tone: 'inspect' (CUMPLE/NO CUMPLE/NO APLICA → verde/rojo/gris)
                  'doc'     (VIGENTE/VENCIDO/NO APLICA   → verde/rojo/gris)
@@ -436,6 +442,8 @@
             licenciaVencida: false, // bloquea el envio del preoperacional
             docDates: {},     // { gridKey: { itemIndex: { fecha:'', na:false } } }
             docsVencidos: false, // bloquea el envio si hay documentos vencidos
+            preopPhotos: [],  // almacenar fotos de soporte de preoperacional
+            planPhotos: [],   // almacenar fotos de soporte de plan de viaje
         };
         const isDemo = () => {
             const v = (document.getElementById('pf-conductor_nombre')?.value || '').toLowerCase();
@@ -915,6 +923,132 @@
             return gridDef.items.map((item, i) => ({ item, valor: st[i] ?? '' }));
         }
 
+        // ════════════════ PROCESAMIENTO Y CARGA DE FOTOS (ONEDRIVE + POWER AUTOMATE) ════════════════
+        function compressImage(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 1280;
+                        const MAX_HEIGHT = 1280;
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > MAX_WIDTH) {
+                                height *= MAX_WIDTH / width;
+                                width = MAX_WIDTH;
+                            }
+                        } else {
+                            if (height > MAX_HEIGHT) {
+                                width *= MAX_HEIGHT / height;
+                                height = MAX_HEIGHT;
+                            }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Convertir a JPEG con calidad de 75% para no exceder límites de red
+                        const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+                        const base64 = dataUrl.split(',')[1];
+                        resolve({ base64, dataUrl });
+                    };
+                };
+            });
+        }
+
+        async function handlePhotoSelection(inputEl, type) {
+            const files = Array.from(inputEl.files);
+            if (!files.length) return;
+
+            const targetArray = type === 'preop' ? state.preopPhotos : state.planPhotos;
+
+            for (const file of files) {
+                if (targetArray.length >= 5) {
+                    showModal('Puedes subir un máximo de 5 fotos de soporte por formulario.');
+                    break;
+                }
+                const { base64, dataUrl } = await compressImage(file);
+                
+                // Generar nombre de archivo único para evitar colisiones en OneDrive
+                const ext = file.name.split('.').pop() || 'jpg';
+                const uniqueName = `evidencia_${Date.now()}_${Math.floor(Math.random() * 1000)}.${ext}`;
+
+                targetArray.push({
+                    id: uniqueName,
+                    fileName: uniqueName,
+                    base64: base64,
+                    dataUrl: dataUrl
+                });
+            }
+
+            renderPhotoPreviews(type);
+            inputEl.value = '';
+        }
+
+        function renderPhotoPreviews(type) {
+            const targetArray = type === 'preop' ? state.preopPhotos : state.planPhotos;
+            const previewEl = $(type === 'preop' ? 'preop-photos-preview' : 'plan-photos-preview');
+            if (!previewEl) return;
+
+            previewEl.innerHTML = targetArray.map((photo, index) => {
+                return `
+                    <div class="relative rounded-lg overflow-hidden border border-gray-200 aspect-square bg-gray-100 shadow-sm">
+                        <img src="${photo.dataUrl}" class="w-full h-full object-cover">
+                        <button type="button" class="absolute top-1 right-1 bg-red-600/80 hover:bg-red-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow-md transition-colors"
+                                onclick="removePhoto('${type}', ${index})">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        window.removePhoto = function(type, index) {
+            const targetArray = type === 'preop' ? state.preopPhotos : state.planPhotos;
+            targetArray.splice(index, 1);
+            renderPhotoPreviews(type);
+        };
+
+        async function uploadPhotosToPowerAutomate(type) {
+            const targetArray = type === 'preop' ? state.preopPhotos : state.planPhotos;
+            if (!targetArray || !targetArray.length) return [];
+
+            if (!POWER_AUTOMATE_WEBHOOK_URL) {
+                console.warn('Power Automate Webhook URL no está configurada.');
+                return [];
+            }
+
+            const urls = [];
+            for (const photo of targetArray) {
+                const response = await fetch(POWER_AUTOMATE_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        fileName: photo.fileName,
+                        fileContentBase64: photo.base64,
+                        folderName: type === 'preop' ? 'preoperacionales' : 'planes_viaje'
+                    })
+                });
+                if (!response.ok) {
+                    throw new Error(`Error en el servidor de carga: ${response.statusText}`);
+                }
+                const data = await response.json();
+                if (data.fileUrl) {
+                    urls.push(data.fileUrl);
+                } else {
+                    throw new Error('La respuesta del servidor no contiene la URL del archivo.');
+                }
+            }
+            return urls;
+        }
+
         function getVehiculoOptionsOrdered() {
             const defaultOrder = [
                 'TMULA',
@@ -1069,6 +1203,22 @@
                     <div class="p-4">
                         <textarea id="pf-novedades" rows="3" class="field-input text-gray-900 text-sm block w-full p-3 uppercase placeholder:normal-case" placeholder="Si tienes observaciones del día, escríbelas aquí…"></textarea>
                     </div>
+                </div>
+
+                <div class="sec-card scroll-mt" id="sec-fotos-preop">
+                    <div class="sec-head"><div class="sec-head-ic"><i class="fa-solid fa-camera"></i></div>
+                        <div><div class="sec-head-t">Registro fotográfico de soporte</div><div class="sec-head-s">Opcional · sube fotos para evidenciar novedades o soporte</div></div></div>
+                    <div class="p-4 space-y-4">
+                        <div class="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-gray-400 transition-colors bg-gray-50/50 cursor-pointer" onclick="document.getElementById('photo-input-preop').click()">
+                            <input type="file" id="photo-input-preop" accept="image/*" capture="environment" multiple class="hidden">
+                            <div class="text-center">
+                                <div class="text-3xl text-gray-400 mb-1"><i class="fa-solid fa-images"></i></div>
+                                <p class="text-sm font-bold text-gray-600">Tomar foto o elegir imágenes</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Puedes subir hasta 5 fotos de soporte</p>
+                            </div>
+                        </div>
+                        <div id="preop-photos-preview" class="grid grid-cols-3 gap-3"></div>
+                    </div>
                 </div>`;
         }
 
@@ -1092,8 +1242,23 @@
                     </div>
                 </div>
 
-                ${PLAN_GRIDS.map(renderGrid).join('')}`;
-            // ids de los inputs del plan usan prefijo pf- igual que preop pero distintos nombres
+                ${PLAN_GRIDS.map(renderGrid).join('')}
+
+                <div class="sec-card scroll-mt" id="sec-fotos-plan">
+                    <div class="sec-head"><div class="sec-head-ic"><i class="fa-solid fa-camera"></i></div>
+                        <div><div class="sec-head-t">Registro fotográfico de soporte</div><div class="sec-head-s">Opcional · sube fotos de soporte para el viaje</div></div></div>
+                    <div class="p-4 space-y-4">
+                        <div class="flex items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 hover:border-gray-400 transition-colors bg-gray-50/50 cursor-pointer" onclick="document.getElementById('photo-input-plan').click()">
+                            <input type="file" id="photo-input-plan" accept="image/*" capture="environment" multiple class="hidden">
+                            <div class="text-center">
+                                <div class="text-3xl text-gray-400 mb-1"><i class="fa-solid fa-images"></i></div>
+                                <p class="text-sm font-bold text-gray-600">Tomar foto o elegir imágenes</p>
+                                <p class="text-xs text-gray-400 mt-0.5">Puedes subir hasta 5 fotos de soporte</p>
+                            </div>
+                        </div>
+                        <div id="plan-photos-preview" class="grid grid-cols-3 gap-3"></div>
+                    </div>
+                </div>`;
         }
 
         /* ════════════════ VALIDACIÓN COMÚN ════════════════ */
@@ -1182,6 +1347,7 @@
             state.grids = {}; state.preop = null; state.preopId = null;
             state.lastLookup = null; state.lastVehiculoLookup = null; state.licenciaVencida = false;
             state.docDates = {}; state.docsVencidos = false;
+            state.preopPhotos = []; state.planPhotos = [];
             buildPreopForm(); buildPlanForm();
         }
 
@@ -1262,7 +1428,28 @@
                 return;
             }
 
-            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando…';
+            btn.disabled = true;
+            const hasPhotos = state.preopPhotos && state.preopPhotos.length > 0;
+            if (hasPhotos && POWER_AUTOMATE_WEBHOOK_URL) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Subiendo fotos a OneDrive…';
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando…';
+            }
+
+            let photoUrls = [];
+            try {
+                if (hasPhotos) {
+                    photoUrls = await uploadPhotosToPowerAutomate('preop');
+                }
+            } catch (err) {
+                console.error('Error subiendo fotos a OneDrive:', err);
+                showModal('No pudimos subir las fotos de soporte a OneDrive. Revisa tu conexión e inténtalo de nuevo.', 'error');
+                btn.disabled = false; btn.innerHTML = orig;
+                return;
+            }
+
+            payload.fotos = photoUrls;
+
             try {
                 const preopId = generateUUID();
                 payload.id = preopId;
@@ -1362,7 +1549,28 @@
 
             if (isDemoPlan()) { finishThanks(true); return; }
 
-            btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando…';
+            btn.disabled = true;
+            const hasPhotos = state.planPhotos && state.planPhotos.length > 0;
+            if (hasPhotos && POWER_AUTOMATE_WEBHOOK_URL) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Subiendo fotos a OneDrive…';
+            } else {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Enviando…';
+            }
+
+            let photoUrls = [];
+            try {
+                if (hasPhotos) {
+                    photoUrls = await uploadPhotosToPowerAutomate('plan');
+                }
+            } catch (err) {
+                console.error('Error subiendo fotos a OneDrive:', err);
+                showModal('No pudimos subir las fotos de soporte a OneDrive. Revisa tu conexión e inténtalo de nuevo.', 'error');
+                btn.disabled = false; btn.innerHTML = orig;
+                return;
+            }
+
+            payload.fotos = photoUrls;
+
             try {
                 const { error } = await supabase.from('pv_planes_viaje').insert(payload);
                 if (error) throw error;
@@ -1449,6 +1657,8 @@
             }
             if (e.target.id === 'pf-licencia_vencimiento') evaluateLicencia();
             if (e.target.classList?.contains('doc-date')) updateDocDate(e.target);
+            if (e.target.id === 'photo-input-preop') handlePhotoSelection(e.target, 'preop');
+            if (e.target.id === 'photo-input-plan') handlePhotoSelection(e.target, 'plan');
         });
         function updateDocDate(el) {
             const s = docState(el.dataset.docdate, Number(el.dataset.i));
