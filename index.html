@@ -609,6 +609,15 @@
                 if (el) el.value = row.placa_tanque;
             }
 
+            // Tipo de vehículo
+            if (row.tipo_vehiculo) {
+                const el = $('pf-tipo_vehiculo');
+                if (el) {
+                    el.value = row.tipo_vehiculo;
+                    handleTipoVehiculoChange(row.tipo_vehiculo);
+                }
+            }
+
             // Documentos del vehículo:
             if (row.documentos_vehiculo && Array.isArray(row.documentos_vehiculo)) {
                 row.documentos_vehiculo.forEach((doc) => {
@@ -733,25 +742,23 @@
            VENCIDO / NO APLICA) se DERIVA de la fecha para el dashboard y el conteo.
            Misma regla que la licencia: vencido → rojo + bloquea; ≤2 días → avisa;
            >2 días → nada. "No aplica" solo donde el documento puede no requerirse. */
-        function docState(gridKey, i) {
-            state.docDates[gridKey] = state.docDates[gridKey] || {};
-            state.docDates[gridKey][i] = state.docDates[gridKey][i] || { fecha:'', na:false };
-            return state.docDates[gridKey][i];
+        function docState(key, i) {
+            state.docDates[key] = state.docDates[key] || {};
+            state.docDates[key][i] = state.docDates[key][i] || { fecha:'', na:false };
+            return state.docDates[key][i];
         }
-
-        function docValor(gridKey, i) {
-            const s = docState(gridKey, i);
+        function docValor(key, i) {
+            const s = docState(key, i);
             if (s.na) return 'NO APLICA';
             if (!s.fecha) return '';
-            const dias = daysUntil(s.fecha);
-            return (dias !== null && dias < 0) ? 'VENCIDO' : 'VIGENTE';
+            return daysUntil(s.fecha) < 0 ? 'VENCIDO' : 'VIGENTE';
         }
-
         function renderDocGrid(grid) {
+            state.docDates[grid.key] = state.docDates[grid.key] || {};
+            if (grid.optsAt) state.grids[grid.key] = state.grids[grid.key] || {};
             const rows = grid.items.map((label, i) => {
-                // Ítems especiales que usan toggle (optsAt) en lugar de fecha
+                // Ítems marcados en optsAt: toggle de opciones (no fecha).
                 if (grid.optsAt && grid.optsAt[i]) {
-                    state.grids[grid.key] = state.grids[grid.key] || {};
                     const opts = grid.optsAt[i].map(o =>
                         `<span class="chk-opt" data-grid="${grid.key}" data-i="${i}" data-val="${o}">${o}</span>`
                     ).join('');
@@ -760,54 +767,45 @@
                                 <span class="chk-seg">${opts}</span>
                             </div>`;
                 }
-
-                // Ítems estándar de fecha
-                const s = docState(grid.key, i);
-                return `<div class="chk-row" data-rowgrid="${grid.key}" data-rowi="${i}">
+                const naBtn = grid.allowNA
+                    ? `<button type="button" class="doc-na" data-docna="${grid.key}" data-i="${i}">No aplica</button>` : '';
+                return `<div class="chk-row doc-row" data-rowgrid="${grid.key}" data-rowi="${i}">
                             <span class="chk-row-label">${label}</span>
-                            <div class="doc-controls">
-                                <input type="date" class="doc-date field-input ${s.na?'doc-date-off':''}"
-                                       data-docdate="${grid.key}" data-i="${i}" ${s.na?'disabled':''} value="${s.fecha||''}">
-                                ${grid.allowNA ? `<span class="doc-na ${s.na?'is-on':''}" data-docna="${grid.key}" data-i="${i}">N/A</span>` : ''}
-                            </div>
+                            <span class="doc-controls">
+                                <input type="date" class="field-input doc-date" data-docdate="${grid.key}" data-i="${i}" aria-label="Vencimiento ${label}">
+                                ${naBtn}
+                            </span>
                         </div>`;
             }).join('');
-
             return `<div class="sec-card scroll-mt" id="sec-${grid.key}">
                         <div class="sec-head">
                             <div class="sec-head-ic"><i class="fa-solid ${grid.icon}"></i></div>
                             <div class="flex-1 min-w-0">
                                 <div class="sec-head-t">${grid.titulo}</div>
-                                <div class="sec-head-s">${grid.items.length} documentos · ingresa su vencimiento</div>
+                                <div class="sec-head-s">${grid.items.length} ítems · fecha de vencimiento${grid.allowNA ? ' (o “No aplica”)' : ''}</div>
                             </div>
                         </div>
                         <div>${rows}</div>
-                        <div id="docmsg-${grid.key}" class="hidden p-4 bg-gray-50 border-t border-gray-150">
+                        <div id="docmsg-${grid.key}" class="hidden px-4 pb-4">
                             <div class="doc-msg rounded-xl px-3.5 py-3 text-[13px] font-semibold flex items-start gap-2"></div>
                         </div>
                     </div>`;
         }
 
-        function toggleDocNA(gridKey, i) {
-            const s = docState(gridKey, i);
+        // Marca/desmarca "No aplica" en un documento.
+        function toggleDocNA(key, i) {
+            const s = docState(key, i);
             s.na = !s.na;
             if (s.na) s.fecha = '';
-            const row = document.querySelector(`.chk-row[data-rowgrid="${gridKey}"][data-rowi="${i}"]`);
+            const row = document.querySelector(`.chk-row[data-rowgrid="${key}"][data-rowi="${i}"]`);
             const dateEl = row?.querySelector('.doc-date');
             const naBtn = row?.querySelector('.doc-na');
-            if (dateEl) {
-                dateEl.value = '';
-                dateEl.disabled = s.na;
-                dateEl.classList.toggle('doc-date-off', s.na);
-                dateEl.classList.remove('is-error');
-            }
+            if (dateEl) { dateEl.value = ''; dateEl.disabled = s.na; dateEl.classList.toggle('doc-date-off', s.na); }
             if (naBtn) naBtn.classList.toggle('is-on', s.na);
-            row?.classList.remove('is-missing', 'doc-expired');
-
             evaluateAllDocs();
         }
 
-        // Evalúa un grid de documentos individuales.
+        // Evalúa un grid de documentos: pinta vencidos, arma el aviso y devuelve listas.
         function evaluateDocGrid(grid) {
             const expired = [], soon = [];
             grid.items.forEach((label, i) => {
@@ -917,6 +915,87 @@
             return gridDef.items.map((item, i) => ({ item, valor: st[i] ?? '' }));
         }
 
+        function getVehiculoOptionsOrdered() {
+            const defaultOrder = [
+                'TMULA',
+                'PATINETA',
+                'CAMION',
+                'TURBO',
+                'DOBLE TROQUE',
+                'CAMIONETA',
+                'GRUA',
+                'MANLIFT',
+                'CARGADOR',
+                'CAMION GRUA'
+            ];
+            try {
+                const counts = JSON.parse(localStorage.getItem('tipo_vehiculo_counts') || '{}');
+                return [...defaultOrder].sort((a, b) => {
+                    const countA = counts[a] || 0;
+                    const countB = counts[b] || 0;
+                    if (countB !== countA) return countB - countA;
+                    return defaultOrder.indexOf(a) - defaultOrder.indexOf(b);
+                });
+            } catch (e) {
+                console.error('Error al ordenar tipos de vehículo:', e);
+                return defaultOrder;
+            }
+        }
+
+        function incrementVehiculoUsage(tipo) {
+            if (!tipo) return;
+            try {
+                const counts = JSON.parse(localStorage.getItem('tipo_vehiculo_counts') || '{}');
+                counts[tipo] = (counts[tipo] || 0) + 1;
+                localStorage.setItem('tipo_vehiculo_counts', JSON.stringify(counts));
+            } catch (e) {
+                console.error('Error al guardar frecuencia de vehículo:', e);
+            }
+        }
+
+        function handleTipoVehiculoChange(tipo) {
+            const placaTanqueInput = $('pf-placa_tanque');
+            if (!placaTanqueInput) return;
+            const labelEl = placaTanqueInput.previousElementSibling;
+
+            if (tipo === 'TMULA' || tipo === 'PATINETA') {
+                placaTanqueInput.dataset.req = "true";
+                if (labelEl) labelEl.innerHTML = 'Placa tanque / carrocería (si aplica)*';
+                if (placaTanqueInput.value === 'N/A') {
+                    placaTanqueInput.value = '';
+                }
+            } else {
+                placaTanqueInput.dataset.req = "false";
+                if (labelEl) labelEl.innerHTML = 'Placa tanque / carrocería (si aplica)';
+                if (tipo) {
+                    placaTanqueInput.value = 'N/A';
+                }
+            }
+
+            // Desmarcar "No aplica" para documentos obligatorios según el tipo de vehículo
+            let reqIndices = [];
+            if (tipo === 'TMULA') {
+                reqIndices = [2, 3, 4, 6, 7];
+            } else if (['PATINETA', 'CAMION', 'TURBO', 'DOBLE TROQUE', 'CAMIONETA'].includes(tipo)) {
+                reqIndices = [2, 3, 4];
+            }
+
+            reqIndices.forEach(idx => {
+                const s = docState('documentos_vehiculo', idx);
+                if (s.na) {
+                    s.na = false;
+                    s.fecha = '';
+                    const row = document.querySelector(`.chk-row[data-rowgrid="documentos_vehiculo"][data-rowi="${idx}"]`);
+                    const dateEl = row?.querySelector('.doc-date');
+                    const naBtn = row?.querySelector('.doc-na');
+                    if (dateEl) { dateEl.value = ''; dateEl.disabled = false; dateEl.classList.remove('doc-date-off'); }
+                    if (naBtn) naBtn.classList.remove('is-on');
+                }
+            });
+
+            evaluateAllDocs();
+        }
+
         /* ════════════════ CONSTRUCCIÓN DEL FORMULARIO PREOPERACIONAL ════════════════ */
         function txt(id, label, { required=true, placeholder='', upper=true, type='text', value='', inputmode='' } = {}) {
             return `<div>
@@ -971,11 +1050,12 @@
 
                 <div class="sec-card scroll-mt">
                     <div class="sec-head"><div class="sec-head-ic"><i class="fa-solid fa-truck-front"></i></div>
-                        <div class="flex-1 min-w-0"><div class="sec-head-t">Datos del vehículo</div><div class="sec-head-s">Cabezote, tanque y kilometraje</div></div>
+                        <div class="flex-1 min-w-0"><div class="sec-head-t">Datos del vehículo</div><div class="sec-head-s">Cabezote, tipo, tanque y kilometraje</div></div>
                         <span id="veh-hint" class="hidden items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[.06em] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1"><i class="fa-solid fa-bolt"></i> Vehículo recuperado</span>
                     </div>
-                    <div class="p-4 grid sm:grid-cols-3 gap-4">
+                    <div class="p-4 grid sm:grid-cols-2 md:grid-cols-4 gap-4">
                         ${txt('placa_cabezote','Placa cabezote',{placeholder:'ABC123'})}
+                        ${selectField('tipo_vehiculo','Tipo de vehículo',getVehiculoOptionsOrdered(),{required:true})}
                         ${txt('placa_tanque','Placa tanque / carrocería (si aplica)',{placeholder:'R12345',required:false})}
                         ${txt('kilometraje_inicial','Kilometraje inicial',{placeholder:'Ej: 154.300',upper:false,inputmode:'numeric'})}
                     </div>
@@ -1036,6 +1116,18 @@
             for (const g of gridDefs) {
                 // Grids por fecha: cada ítem necesita fecha o estar marcado "No aplica".
                 if (g.mode === 'fecha') {
+                    // Obtener tipo de vehículo si estamos en documentos_vehiculo
+                    let reqIndices = [];
+                    if (g.key === 'documentos_vehiculo') {
+                        const fp = $('form-preop');
+                        const tipo = fp ? (fp.querySelector('#pf-tipo_vehiculo')?.value || '') : '';
+                        if (tipo === 'TMULA') {
+                            reqIndices = [2, 3, 4, 6, 7]; // SOAT, Revisión Tecno-Mecánica, Póliza Todo Riesgo, Inspección Quinta Rueda, Inspección King Pin
+                        } else if (['PATINETA', 'CAMION', 'TURBO', 'DOBLE TROQUE', 'CAMIONETA'].includes(tipo)) {
+                            reqIndices = [2, 3, 4]; // SOAT, Revisión Tecno-Mecánica, Póliza Todo Riesgo
+                        }
+                    }
+
                     for (let i = 0; i < g.items.length; i++) {
                         // Ítems toggle: deben tener una opción seleccionada.
                         if (g.optsAt && g.optsAt[i]) {
@@ -1048,11 +1140,20 @@
                             continue;
                         }
                         const s = docState(g.key, i);
-                        if (!s.na && !s.fecha) {
-                            const row = document.querySelector(`.chk-row[data-rowgrid="${g.key}"][data-rowi="${i}"]`);
-                            if (row) { row.classList.add('is-missing'); row.scrollIntoView({ behavior:'smooth', block:'center' }); }
-                            showModal(`Falta la fecha de vencimiento en "${g.titulo}": ${g.items[i]}`);
-                            return false;
+                        if (reqIndices.includes(i)) {
+                            if (s.na || !s.fecha) {
+                                const row = document.querySelector(`.chk-row[data-rowgrid="${g.key}"][data-rowi="${i}"]`);
+                                if (row) { row.classList.add('is-missing'); row.scrollIntoView({ behavior:'smooth', block:'center' }); }
+                                showModal(`El documento "${g.items[i]}" es OBLIGATORIO para el tipo de vehículo seleccionado y no puede ser "No aplica" ni estar vacío.`);
+                                return false;
+                            }
+                        } else {
+                            if (!s.na && !s.fecha) {
+                                const row = document.querySelector(`.chk-row[data-rowgrid="${g.key}"][data-rowi="${i}"]`);
+                                if (row) { row.classList.add('is-missing'); row.scrollIntoView({ behavior:'smooth', block:'center' }); }
+                                showModal(`Falta la fecha de vencimiento en "${g.titulo}": ${g.items[i]}`);
+                                return false;
+                            }
                         }
                     }
                     continue;
@@ -1124,6 +1225,7 @@
                 licencia_categoria: get('licencia_categoria'),
                 eps: up('eps'), arl: up('arl'), afp: up('afp'),
                 placa_cabezote: up('placa_cabezote'),
+                tipo_vehiculo: get('tipo_vehiculo'),
                 placa_tanque: normTanque(get('placa_tanque')),
                 kilometraje_inicial: get('kilometraje_inicial'),
                 documentos_conductor: serializeGrid(PREOP_GRIDS[0]),
@@ -1148,6 +1250,7 @@
                 placa_tanque: payload.placa_tanque,
                 kilometraje: payload.kilometraje_inicial,
                 licencia_vencimiento: payload.licencia_vencimiento,
+                tipo_vehiculo: payload.tipo_vehiculo,
                 apto, nc,
             };
 
@@ -1339,6 +1442,11 @@
 
             if (e.target.id === 'pf-conductor_identificacion') lookupConductor(e.target.value);
             if (e.target.id === 'pf-placa_cabezote') lookupVehiculo(e.target.value);
+            if (e.target.id === 'pf-tipo_vehiculo') {
+                const tipo = e.target.value;
+                incrementVehiculoUsage(tipo);
+                handleTipoVehiculoChange(tipo);
+            }
             if (e.target.id === 'pf-licencia_vencimiento') evaluateLicencia();
             if (e.target.classList?.contains('doc-date')) updateDocDate(e.target);
         });
