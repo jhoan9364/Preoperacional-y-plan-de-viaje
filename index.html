@@ -126,6 +126,15 @@
         .doc-na.is-on { background:var(--na-bg); border-color:#cbd5e1; color:var(--na); }
         .chk-row.doc-expired { background:#fff7f7; }
 
+        /* Estado de avance del ítem ─ guía visual para el conductor:
+           pendiente (sin responder) → rojo suave  ·  correcto/diligenciado → verde tenue */
+        .chk-row.is-pending { background:#fff6f6; }
+        .chk-row.is-pending .chk-opt { border-color:#fca5a5; color:#dc2626; background:#fff5f5; }
+        .chk-row.is-pending .chk-opt:hover { border-color:#f87171; }
+        .chk-row.is-pending .doc-date { border-color:#fca5a5; background:#fff5f5; }
+        .chk-row.is-ok { background:#f3fdf7; }
+        .doc-date.is-ok { border-color:#86efac; background:#f0fdf4; color:#15803d; font-weight:700; }
+
         /* Bulk action chip */
         .bulk-chip {
             cursor:pointer; font-size:10.5px; font-weight:700; padding:4px 9px; border-radius:99px;
@@ -422,9 +431,15 @@
         // Valores que cuentan como "no conforme" en el preoperacional
         const NO_CONFORME = new Set(['NO CUMPLE','VENCIDO']);
 
-        // Color de la opción seleccionada según tone + valor
-        function optClass(tone, val) {
-            if (tone === 'siono') return 'sel-neutral';
+        // Color de la opción seleccionada: verde = bien diligenciado, rojo = problema/riesgo.
+        function optClass(gridDef, i, val) {
+            // Sí/No: el color depende de si la respuesta es la "segura" o la de riesgo.
+            // La respuesta de riesgo está en gridDef.alertWhen[i] (NO a un compromiso,
+            // SÍ a "¿maneja +10h?", etc.) → rojo. Cualquier otra respuesta → verde.
+            if (gridDef.tone === 'siono') {
+                const alerta = Array.isArray(gridDef.alertWhen) ? gridDef.alertWhen[i] : null;
+                return (alerta && val === alerta) ? 'sel-bad' : 'sel-good';
+            }
             if (val === 'NO APLICA') return 'sel-na';
             if (val === 'CUMPLE' || val === 'VIGENTE' || val === 'BUENO') return 'sel-good';
             if (val === 'NO CUMPLE' || val === 'VENCIDO' || val === 'MALO') return 'sel-bad';
@@ -670,8 +685,8 @@
 
         // Evalúa la fecha de vencimiento de la licencia y muestra el aviso adecuado.
         // - Vencida  → rojo + bloquea el envío (state.licenciaVencida = true)
-        // - ≤ 2 días → aviso ámbar de que está por vencer
-        // - > 2 días → sin aviso
+        // - ≤ 4 días → aviso ámbar de que está por vencer
+        // - > 4 días → sin aviso
         function evaluateLicencia() {
             const input = $('pf-licencia_vencimiento');
             const wrap = $('lic-msg-wrap');
@@ -690,7 +705,7 @@
                 showLicMsg('error', `Tu licencia está <b>VENCIDA</b> (venció el ${fmtFechaLarga(val)}). Actualiza la nueva fecha de vencimiento para poder guardar el preoperacional.`);
             } else if (dias === 0) {
                 showLicMsg('warn', `Atención: tu licencia <b>vence HOY</b> (${fmtFechaLarga(val)}). Realiza el trámite de renovación cuanto antes.`);
-            } else if (dias <= 2) {
+            } else if (dias <= 4) {
                 showLicMsg('warn', `Atención: tu licencia vence en <b>${dias} día${dias === 1 ? '' : 's'}</b> (${fmtFechaLarga(val)}). Realiza el trámite de renovación.`);
             } else {
                 wrap.classList.add('hidden');
@@ -748,8 +763,8 @@
         /* ════════════════ LISTA DE DOCUMENTOS POR FECHA DE VENCIMIENTO ════════════════
            Cada ítem se diligencia con su fecha de vencimiento. El valor (VIGENTE /
            VENCIDO / NO APLICA) se DERIVA de la fecha para el dashboard y el conteo.
-           Misma regla que la licencia: vencido → rojo + bloquea; ≤2 días → avisa;
-           >2 días → nada. "No aplica" solo donde el documento puede no requerirse. */
+           Misma regla que la licencia: vencido → rojo + bloquea; ≤4 días → avisa;
+           >4 días → nada. "No aplica" solo donde el documento puede no requerirse. */
         function docState(key, i) {
             state.docDates[key] = state.docDates[key] || {};
             state.docDates[key][i] = state.docDates[key][i] || { fecha:'', na:false };
@@ -821,13 +836,17 @@
                 const s = docState(grid.key, i);
                 const row = document.querySelector(`.chk-row[data-rowgrid="${grid.key}"][data-rowi="${i}"]`);
                 const dateEl = row?.querySelector('.doc-date');
-                row?.classList.remove('is-missing', 'doc-expired');
-                dateEl?.classList.remove('is-error');
-                if (s.na || !s.fecha) return;
+                row?.classList.remove('is-missing', 'doc-expired', 'is-pending', 'is-ok');
+                dateEl?.classList.remove('is-error', 'is-ok');
+                if (s.na) return;                                  // "No aplica" → respondido (neutro)
+                if (!s.fecha) { row?.classList.add('is-pending'); return; }   // sin fecha → rojo (falta)
                 const dias = daysUntil(s.fecha);
-                if (dias === null) return;
+                if (dias === null) { row?.classList.add('is-pending'); return; }
                 if (dias < 0) { expired.push(label); dateEl?.classList.add('is-error'); row?.classList.add('doc-expired'); }
-                else if (dias <= 2) { soon.push({ label, dias }); }
+                else {
+                    dateEl?.classList.add('is-ok'); row?.classList.add('is-ok');   // vigente → fecha en verde
+                    if (dias <= 4) soon.push({ label, dias });
+                }
             });
             const wrap = document.getElementById('docmsg-' + grid.key);
             const box = wrap?.querySelector('.doc-msg');
@@ -893,10 +912,23 @@
             const gridDef = [...PREOP_GRIDS, ...PLAN_GRIDS].find(g => g.key === gridKey);
             const row = document.querySelector(`.chk-row[data-rowgrid="${gridKey}"][data-rowi="${i}"]`);
             if (!row) return;
-            row.classList.remove('is-missing');
+            // Ya respondido → deja de estar pendiente (quita el rojo de "falta").
+            row.classList.remove('is-missing', 'is-pending');
             row.querySelectorAll('.chk-opt').forEach(o => {
                 o.className = 'chk-opt';
-                if (o.dataset.val === val) o.classList.add(optClass(gridDef.tone, val));
+                if (o.dataset.val === val) o.classList.add(optClass(gridDef, i, val));
+            });
+        }
+
+        /* Pinta de rojo suave (is-pending) cada ítem de opciones que aún no se ha
+           respondido, para que el conductor vea de un vistazo qué le falta. Las filas
+           con fecha (documentos) las maneja evaluateDocGrid. */
+        function refreshCompletion() {
+            document.querySelectorAll('.chk-row[data-rowgrid]:not(.doc-row)').forEach(row => {
+                const key = row.dataset.rowgrid;
+                const i = Number(row.dataset.rowi);
+                const answered = state.grids[key] && state.grids[key][i] !== undefined;
+                row.classList.toggle('is-pending', !answered);
             });
         }
 
@@ -1220,6 +1252,9 @@
                         <div id="preop-photos-preview" class="grid grid-cols-3 gap-3"></div>
                     </div>
                 </div>`;
+            // Estado inicial de avance: todo sin responder se marca en rojo suave.
+            evaluateAllDocs();
+            refreshCompletion();
         }
 
         /* ════════════════ CONSTRUCCIÓN DEL FORMULARIO PLAN DE VIAJE ════════════════ */
@@ -1259,6 +1294,8 @@
                         <div id="plan-photos-preview" class="grid grid-cols-3 gap-3"></div>
                     </div>
                 </div>`;
+            // Estado inicial de avance: todo sin responder se marca en rojo suave.
+            refreshCompletion();
         }
 
         /* ════════════════ VALIDACIÓN COMÚN ════════════════ */
