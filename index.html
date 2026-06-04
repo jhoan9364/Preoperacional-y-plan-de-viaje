@@ -330,6 +330,10 @@
             </div>
             <p id="modal-text" class="text-base mb-5 text-gray-700"></p>
             <button id="modal-close-btn" class="btn-brand font-bold py-2.5 px-6 rounded-xl">Entendido</button>
+            <div id="modal-btn-container" class="flex gap-3 justify-center mt-4 hidden">
+                <button id="modal-cancel-btn" type="button" class="btn-ghost font-bold py-2.5 px-5 rounded-xl text-sm w-1/2">No, otro</button>
+                <button id="modal-confirm-btn" type="button" class="btn-brand font-bold py-2.5 px-5 rounded-xl text-sm w-1/2">Sí, el mismo</button>
+            </div>
         </div>
     </div>
 
@@ -530,7 +534,9 @@
 
         // --- Modal ---
         function showModal(text, type='warn') {
-            $('modal-text').textContent = text;
+            $('modal-close-btn').classList.remove('hidden');
+            $('modal-btn-container').classList.add('hidden');
+            $('modal-text').innerHTML = text;
             const icon = $('modal-icon');
             if (type === 'error') {
                 icon.className = 'mx-auto w-12 h-12 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center mb-3';
@@ -542,6 +548,29 @@
             $('modal').classList.remove('hidden');
         }
         $('modal-close-btn').addEventListener('click', () => $('modal').classList.add('hidden'));
+
+        function showConfirmModal(text, onConfirm, onCancel) {
+            $('modal-text').innerHTML = text;
+            const icon = $('modal-icon');
+            icon.className = 'mx-auto w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mb-3';
+            icon.innerHTML = '<i class="fa-solid fa-truck-front text-2xl"></i>';
+            
+            $('modal-close-btn').classList.add('hidden');
+            $('modal-btn-container').classList.remove('hidden');
+            
+            const modal = $('modal');
+            modal.classList.remove('hidden');
+            
+            $('modal-confirm-btn').onclick = () => {
+                modal.classList.add('hidden');
+                if (onConfirm) onConfirm();
+            };
+            
+            $('modal-cancel-btn').onclick = () => {
+                modal.classList.add('hidden');
+                if (onCancel) onCancel();
+            };
+        }
 
         /* ════════════════ AUTOCOMPLETAR POR CÉDULA + CONTROL DE LICENCIA ════════════════
            El formato solo puede INSERTAR (RLS). Para recuperar el último dato del
@@ -579,17 +608,35 @@
             if (row.licencia_categoria) { const c = $('pf-licencia_categoria'); if (c) c.value = row.licencia_categoria; }
             if (row.licencia_vencimiento) { const v = $('pf-licencia_vencimiento'); if (v) v.value = row.licencia_vencimiento; }
 
-            // Placas del último viaje del conductor
+            // Placas del último viaje: preguntar si desea cargarlas
             if (row.placa_cabezote) {
-                const el = $('pf-placa_cabezote');
-                if (el) {
-                    el.value = row.placa_cabezote;
-                    lookupVehiculo(row.placa_cabezote, true); // skip overwriting placa_tanque
-                }
-            }
-            if (row.placa_tanque) {
-                const el = $('pf-placa_tanque');
-                if (el) el.value = row.placa_tanque;
+                const tanqueMsg = row.placa_tanque ? ` y tanque <b>${row.placa_tanque}</b>` : '';
+                const msg = `Tu último servicio lo prestaste con el vehículo placa <b>${row.placa_cabezote}</b>${tanqueMsg}.<br><br>¿Deseas utilizar este mismo vehículo?`;
+                
+                showConfirmModal(msg, () => {
+                    // SI: autocompletar
+                    const cabEl = $('pf-placa_cabezote');
+                    if (cabEl) {
+                        cabEl.value = row.placa_cabezote;
+                        lookupVehiculo(row.placa_cabezote, true);
+                    }
+                    if (row.placa_tanque) {
+                        const tanEl = $('pf-placa_tanque');
+                        if (tanEl) tanEl.value = row.placa_tanque;
+                    }
+                }, () => {
+                    // NO: limpiar campos para ingresar manualmente
+                    const cabEl = $('pf-placa_cabezote');
+                    if (cabEl) cabEl.value = '';
+                    const tanEl = $('pf-placa_tanque');
+                    if (tanEl) tanEl.value = '';
+                    const typeEl = $('pf-tipo_vehiculo');
+                    if (typeEl) {
+                        typeEl.value = '';
+                        typeEl.disabled = false;
+                        typeEl.classList.remove('bg-gray-100', 'cursor-not-allowed');
+                    }
+                });
             }
 
             // Documentos del conductor:
