@@ -579,6 +579,19 @@
             if (row.licencia_categoria) { const c = $('pf-licencia_categoria'); if (c) c.value = row.licencia_categoria; }
             if (row.licencia_vencimiento) { const v = $('pf-licencia_vencimiento'); if (v) v.value = row.licencia_vencimiento; }
 
+            // Placas del último viaje del conductor
+            if (row.placa_cabezote) {
+                const el = $('pf-placa_cabezote');
+                if (el) {
+                    el.value = row.placa_cabezote;
+                    lookupVehiculo(row.placa_cabezote, true); // skip overwriting placa_tanque
+                }
+            }
+            if (row.placa_tanque) {
+                const el = $('pf-placa_tanque');
+                if (el) el.value = row.placa_tanque;
+            }
+
             // Documentos del conductor:
             if (row.documentos_conductor && Array.isArray(row.documentos_conductor)) {
                 row.documentos_conductor.forEach((doc) => {
@@ -615,7 +628,7 @@
         }
 
         /* ════════════════ AUTOCOMPLETAR POR PLACA DEL VEHÍCULO ════════════════ */
-        async function lookupVehiculo(raw) {
+        async function lookupVehiculo(raw, skipPlacaTanque = false) {
             const placa = String(raw || '').replace(/\s/g, '').toUpperCase();
             if (placa === 'DEMO') {
                 state.lastVehiculoLookup = placa;
@@ -643,7 +656,7 @@
                 if (error) { console.warn('lookup vehiculo:', error); return; }
                 const row = Array.isArray(data) ? data[0] : data;
                 if (row && row.encontrado_maestro) {
-                    applyVehiculoLookup(row);
+                    applyVehiculoLookup(row, skipPlacaTanque);
                 } else {
                     const el = $('pf-tipo_vehiculo');
                     if (el) {
@@ -656,9 +669,9 @@
             } catch (err) { console.warn('lookup vehiculo:', err); }
         }
 
-        function applyVehiculoLookup(row) {
+        function applyVehiculoLookup(row, skipPlacaTanque = false) {
             // Placa del tanque / trailer
-            if (row.placa_tanque) {
+            if (row.placa_tanque && !skipPlacaTanque) {
                 const el = $('pf-placa_tanque');
                 if (el) el.value = row.placa_tanque;
             }
