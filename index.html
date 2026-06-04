@@ -361,76 +361,117 @@
                  'doc'     (VIGENTE/VENCIDO/NO APLICA   → verde/rojo/gris)
                  'estado'  (BUENO/REGULAR/MALO          → verde/ámbar/rojo)
                  'siono'   (SI/NO                       → selección neutra) */
-        const PREOP_GRIDS = [
-            { key:'documentos_conductor', titulo:'Documentos del conductor', icon:'fa-id-card', tone:'doc',
-              mode:'fecha', allowNA:false, items:[
-                'Curso Manejo Defensivo','Curso Transporte de Mercancías Peligrosas','Curso Trabajo en Alturas',
-                'Curso Manejo de Extintores','Curso de Primeros Auxilios','Curso Mecánica Básica'] },
-            { key:'documentos_vehiculo', titulo:'Documentos del vehículo', icon:'fa-folder-open', tone:'doc',
-              mode:'fecha', allowNA:true,
-              // Estos dos NO usan fecha: siguen siendo toggle CUMPLE/NO CUMPLE/NO APLICA.
-              optsAt:{ 0:['CUMPLE','NO CUMPLE','NO APLICA'], 1:['CUMPLE','NO CUMPLE','NO APLICA'] },
-              items:[
-                'Tarjeta Propiedad Cabezote','Tarjeta Propiedad Tanque','SOAT','Revisión Técnico-Mecánica',
-                'Póliza Todo Riesgo','Póliza Hidrocarburos','Inspección Quinta Rueda','Inspección King Pin',
-                'Inspección Línea de Vida','Inspección Arnés/Eslinga','Prueba Hidrostática','Tabla de Aforo'] },
-            { key:'revision_electrica', titulo:'Revisión eléctrica', icon:'fa-bolt', tone:'inspect',
-              opts:['CUMPLE','NO CUMPLE','NO APLICA'], items:[
-                'Direccionales Delanteras','Luces Reversa Cabezote','Luces Reversa Tanque','Luces Direccionales Tanque',
-                'Luces de Parqueo','Luz de Freno Cabezote','Luces Medias','Luces Altas','Luces Laterales'] },
-            { key:'llantas', titulo:'Llantas', icon:'fa-circle-dot', tone:'inspect',
-              opts:['CUMPLE','NO CUMPLE'], items:[
-                'Labrado / Desgaste (mín. 3 mm de huella)','Presión (90 a 100 PSI)','Sin fisuras profundas ni abultamientos'] },
-            { key:'sistema_frenos', titulo:'Sistema de frenos', icon:'fa-car-burst', tone:'inspect',
-              opts:['CUMPLE','NO CUMPLE'], items:[
-                'Sin fugas de aire y/o líquidos','Válvula Relay','Líquidos en cantidad adecuada','Cámaras',
-                'Candados y Bandas','Freno de Motor'] },
-            { key:'accesorios', titulo:'Accesorios y seguridad', icon:'fa-screwdriver-wrench', tone:'inspect',
-              opts:['CUMPLE','NO CUMPLE','NO APLICA'], items:[
-                'Panorámico','Limpia Brisas','Nivel Agua Limpia Brisas','Espejos Retrovisores',
-                'Pitos (general y alarma de reversa)','Revise King Pin / Quinta Rueda (fisuras, deterioro)',
-                'Patas de Anclaje','Tanque y líneas de combustible sin fugas','Tablero de Instrumentos',
-                'Cinturones de Seguridad','Equipos de Carretera (gato, copa, palanca, llaves…)',
-                'Equipo de Contingencia, Botiquín y Extintores',
-                'Elementos de Protección Personal (casco, guantes, botas, gafas, protector auditivo)'] },
-            { key:'tanque_carroceria', titulo:'Tanque o carrocería', icon:'fa-truck-droplet', tone:'inspect',
-              opts:['CUMPLE','NO CUMPLE','NO APLICA'], items:[
-                'Estado exterior (pintura, golpes, fracturas)','Soportes, muelles y balancines','Guardapolvos',
-                'Pasarela con líneas de vida y malla antideslizante'] },
-        ];
+        /* GRÚA y MANLIFT operan distinto al resto de la flota: sus listas de chequeo
+           se adecúan a su operación (sin tanque, sin quinta rueda, por horómetro, etc.).
+           Por eso los catálogos se construyen según el tipo de vehículo. */
+        const isGruaManlift = (t) => t === 'GRUA' || t === 'MANLIFT';
 
-        const PLAN_GRIDS = [
-            { key:'encabezado', titulo:'Encabezado del plan', icon:'fa-list-check', tone:'siono',
-              opts:['SI','NO'], alertWhen:['NO','NO'], items:[
-                'Preoperacional diligenciado','Se encuentra vigente la licencia'] },
-            { key:'evaluacion_riesgo', titulo:'Evaluación de riesgo', icon:'fa-triangle-exclamation', tone:'siono',
-              opts:['SI','NO'],
-              alertWhen:['NO','NO','NO','NO','SI','SI','SI'], items:[
-                '¿Se compromete a transportar materiales/mercancías peligrosas en caravana?',
-                '¿Está familiarizado con la ruta?',
-                '¿Después del último viaje durmió al menos 5 horas?',
-                '¿Está cubierta por red celular la mayoría del viaje?',
-                '¿Tiene previsto manejar más de 10 horas seguidas en el viaje?',
-                '¿A esta hora lleva manejando más de 16 horas seguidas?',
-                '¿Hay probabilidades de secuestro o robo en la ruta?'] },
-            { key:'estados_via', titulo:'Estado de la vía', icon:'fa-road', tone:'estado',
-              opts:['BUENO','REGULAR','MALO'], alertWhen:['MALO','MALO'], items:[
-                '¿Cómo se encuentra el estado de la vía?',
-                '¿Cuáles son las condiciones meteorológicas y de visibilidad?'] },
-            { key:'compromisos', titulo:'Compromisos de seguridad vial', icon:'fa-handshake-angle', tone:'siono',
-              opts:['SI','NO'], alertWhen:Array(11).fill('NO'), items:[
-                '¿Se compromete a usar el cinturón de seguridad?',
-                '¿Se compromete a aplicar conocimientos de manejo defensivo?',
-                '¿Se compromete a respetar los límites de velocidad?',
-                '¿Se compromete a respetar a todos los actores viales?',
-                '¿Se compromete a respetar las señales de tránsito?',
-                '¿Se compromete a conducir libre de los efectos del alcohol y las drogas?',
-                '¿Se compromete a conducir en pro de la seguridad vial?',
-                '¿Se compromete a realizar sus pausas activas?',
-                '¿Se compromete a no llevar pasajeros?',
-                '¿Se compromete a no hablar por teléfono mientras conduce?',
-                'Conozco los procedimientos en caso de emergencia.'] },
-        ];
+        function buildPreopGrids(grua) {
+            const grids = [
+                { key:'documentos_conductor', titulo:'Documentos del conductor', icon:'fa-id-card', tone:'doc',
+                  mode:'fecha', allowNA:false, items: grua
+                    ? ['Curso Manejo Defensivo','Curso Trabajo en Alturas',
+                       'Curso Manejo de Extintores','Curso de Primeros Auxilios','Curso Mecánica Básica']
+                    : ['Curso Manejo Defensivo','Curso Transporte de Mercancías Peligrosas','Curso Trabajo en Alturas',
+                       'Curso Manejo de Extintores','Curso de Primeros Auxilios','Curso Mecánica Básica'] },
+                grua
+                  ? { key:'documentos_vehiculo', titulo:'Documentos del vehículo', icon:'fa-folder-open', tone:'doc',
+                      mode:'fecha', allowNA:true,
+                      // El ítem 0 NO usa fecha: sigue siendo toggle CUMPLE/NO CUMPLE/NO APLICA.
+                      optsAt:{ 0:['CUMPLE','NO CUMPLE','NO APLICA'] },
+                      items:[
+                        'Tarjeta Propiedad Cabezote','SOAT','Revisión Técnico-Mecánica',
+                        'Póliza Todo Riesgo','Inspección Arnés/Eslinga'] }
+                  : { key:'documentos_vehiculo', titulo:'Documentos del vehículo', icon:'fa-folder-open', tone:'doc',
+                      mode:'fecha', allowNA:true,
+                      // Estos dos NO usan fecha: siguen siendo toggle CUMPLE/NO CUMPLE/NO APLICA.
+                      optsAt:{ 0:['CUMPLE','NO CUMPLE','NO APLICA'], 1:['CUMPLE','NO CUMPLE','NO APLICA'] },
+                      items:[
+                        'Tarjeta Propiedad Cabezote','Tarjeta Propiedad Tanque','SOAT','Revisión Técnico-Mecánica',
+                        'Póliza Todo Riesgo','Póliza Hidrocarburos','Inspección Quinta Rueda','Inspección King Pin',
+                        'Inspección Línea de Vida','Inspección Arnés/Eslinga','Prueba Hidrostática','Tabla de Aforo'] },
+                { key:'revision_electrica', titulo:'Revisión eléctrica', icon:'fa-bolt', tone:'inspect',
+                  opts:['CUMPLE','NO CUMPLE','NO APLICA'], items: grua
+                    ? ['Direccionales Delanteras','Luces Reversa','Luces de Parqueo','Luz de Freno',
+                       'Luces Medias','Luces Altas','Luces Laterales']
+                    : ['Direccionales Delanteras','Luces Reversa Cabezote','Luces Reversa Tanque','Luces Direccionales Tanque',
+                       'Luces de Parqueo','Luz de Freno Cabezote','Luces Medias','Luces Altas','Luces Laterales'] },
+                { key:'llantas', titulo:'Llantas', icon:'fa-circle-dot', tone:'inspect',
+                  opts:['CUMPLE','NO CUMPLE'], items:[
+                    'Labrado / Desgaste (mín. 3 mm de huella)','Presión (90 a 100 PSI)','Sin fisuras profundas ni abultamientos'] },
+                { key:'sistema_frenos', titulo:'Sistema de frenos', icon:'fa-car-burst', tone:'inspect',
+                  opts:['CUMPLE','NO CUMPLE'], items: grua
+                    ? ['Sin fugas de aire y/o líquidos','Válvula Relay','Líquidos en cantidad adecuada','Cámaras']
+                    : ['Sin fugas de aire y/o líquidos','Válvula Relay','Líquidos en cantidad adecuada','Cámaras',
+                       'Candados y Bandas','Freno de Motor'] },
+                { key:'accesorios', titulo:'Accesorios y seguridad', icon:'fa-screwdriver-wrench', tone:'inspect',
+                  opts:['CUMPLE','NO CUMPLE','NO APLICA'], items: grua
+                    ? ['Panorámico','Limpia Brisas','Nivel Agua Limpia Brisas','Espejos Retrovisores',
+                       'Pitos (general y alarma de reversa)',
+                       'Patas de Anclaje','Tanque y líneas de combustible sin fugas','Tablero de Instrumentos',
+                       'Cinturones de Seguridad','Equipos de Carretera (gato, copa, palanca, llaves…)',
+                       'Equipo de Contingencia, Botiquín y Extintores',
+                       'Elementos de Protección Personal (casco, guantes, botas, gafas, protector auditivo)']
+                    : ['Panorámico','Limpia Brisas','Nivel Agua Limpia Brisas','Espejos Retrovisores',
+                       'Pitos (general y alarma de reversa)','Revise King Pin / Quinta Rueda (fisuras, deterioro)',
+                       'Patas de Anclaje','Tanque y líneas de combustible sin fugas','Tablero de Instrumentos',
+                       'Cinturones de Seguridad','Equipos de Carretera (gato, copa, palanca, llaves…)',
+                       'Equipo de Contingencia, Botiquín y Extintores',
+                       'Elementos de Protección Personal (casco, guantes, botas, gafas, protector auditivo)'] },
+            ];
+            // "Tanque o carrocería" no aplica en grúa/manlift.
+            if (!grua) {
+                grids.push({ key:'tanque_carroceria', titulo:'Tanque o carrocería', icon:'fa-truck-droplet', tone:'inspect',
+                  opts:['CUMPLE','NO CUMPLE','NO APLICA'], items:[
+                    'Estado exterior (pintura, golpes, fracturas)','Soportes, muelles y balancines','Guardapolvos',
+                    'Pasarela con líneas de vida y malla antideslizante'] });
+            }
+            return grids;
+        }
+        let PREOP_GRIDS = buildPreopGrids(false);
+
+        function buildPlanGrids(grua) {
+            return [
+                { key:'encabezado', titulo:'Encabezado del plan', icon:'fa-list-check', tone:'siono',
+                  opts:['SI','NO'], alertWhen: grua ? ['NO'] : ['NO','NO'], items: grua
+                    ? ['Preoperacional diligenciado']
+                    : ['Preoperacional diligenciado','Se encuentra vigente la licencia'] },
+                { key:'evaluacion_riesgo', titulo:'Evaluación de riesgo', icon:'fa-triangle-exclamation', tone:'siono',
+                  opts:['SI','NO'],
+                  alertWhen: grua ? ['NO','NO','NO','SI','SI','SI'] : ['NO','NO','NO','NO','SI','SI','SI'], items: grua
+                    ? ['¿Está familiarizado con la ruta?',
+                       '¿Después del último viaje durmió al menos 5 horas?',
+                       '¿Está cubierta por red celular la mayoría del viaje?',
+                       '¿Tiene previsto manejar más de 10 horas seguidas en el viaje?',
+                       '¿A esta hora lleva manejando más de 16 horas seguidas?',
+                       '¿Hay probabilidades de secuestro o robo en la ruta?']
+                    : ['¿Se compromete a transportar materiales/mercancías peligrosas en caravana?',
+                       '¿Está familiarizado con la ruta?',
+                       '¿Después del último viaje durmió al menos 5 horas?',
+                       '¿Está cubierta por red celular la mayoría del viaje?',
+                       '¿Tiene previsto manejar más de 10 horas seguidas en el viaje?',
+                       '¿A esta hora lleva manejando más de 16 horas seguidas?',
+                       '¿Hay probabilidades de secuestro o robo en la ruta?'] },
+                { key:'estados_via', titulo:'Estado de la vía', icon:'fa-road', tone:'estado',
+                  opts:['BUENO','REGULAR','MALO'], alertWhen:['MALO','MALO'], items:[
+                    '¿Cómo se encuentra el estado de la vía?',
+                    '¿Cuáles son las condiciones meteorológicas y de visibilidad?'] },
+                { key:'compromisos', titulo:'Compromisos de seguridad vial', icon:'fa-handshake-angle', tone:'siono',
+                  opts:['SI','NO'], alertWhen:Array(11).fill('NO'), items:[
+                    '¿Se compromete a usar el cinturón de seguridad?',
+                    '¿Se compromete a aplicar conocimientos de manejo defensivo?',
+                    '¿Se compromete a respetar los límites de velocidad?',
+                    '¿Se compromete a respetar a todos los actores viales?',
+                    '¿Se compromete a respetar las señales de tránsito?',
+                    '¿Se compromete a conducir libre de los efectos del alcohol y las drogas?',
+                    '¿Se compromete a conducir en pro de la seguridad vial?',
+                    '¿Se compromete a realizar sus pausas activas?',
+                    '¿Se compromete a no llevar pasajeros?',
+                    '¿Se compromete a no hablar por teléfono mientras conduce?',
+                    'Conozco los procedimientos en caso de emergencia.'] },
+            ];
+        }
+        let PLAN_GRIDS = buildPlanGrids(false);
 
         // Valores que cuentan como "no conforme" en el preoperacional
         const NO_CONFORME = new Set(['NO CUMPLE','VENCIDO']);
@@ -463,6 +504,9 @@
             docsVencidos: false, // bloquea el envio si hay documentos vencidos
             preopPhotos: [],  // almacenar fotos de soporte de preoperacional
             planPhotos: [],   // almacenar fotos de soporte de plan de viaje
+            preopGruaMode: false, // listas adecuadas a grúa/manlift en el preoperacional
+            licenciaNA: false,    // "la licencia no aplica" (grúa/manlift sin licencia)
+            planTipo: '',         // tipo de vehículo detectado para el plan (modo solo-plan)
         };
         const isDemo = () => {
             const name = (document.getElementById('pf-conductor_nombre')?.value || '').toLowerCase();
@@ -979,6 +1023,9 @@
         // Delegación de clicks para opciones y "marcar todo"
         function wireGrids(rootEl) {
             rootEl.addEventListener('click', (e) => {
+                // Botón "la licencia no aplica" (grúa/manlift). Se comprueba antes que .doc-na.
+                const licna = e.target.closest('#btn-lic-na');
+                if (licna) { setLicenciaNA(!state.licenciaNA); return; }
                 const opt = e.target.closest('.chk-opt');
                 if (opt) {
                     const { grid, i, val } = opt.dataset;
@@ -995,8 +1042,10 @@
                     const { bulk: gkey, val } = bulk.dataset;
                     const gridDef = [...PREOP_GRIDS, ...PLAN_GRIDS].find(g => g.key === gkey);
                     if (gkey === 'evaluacion_riesgo' && val === 'OK') {
+                        // La respuesta "segura" de cada pregunta es la opuesta a su alerta.
                         gridDef.items.forEach((_, idx) => {
-                            const optVal = idx < 4 ? 'SI' : 'NO';
+                            const alerta = gridDef.alertWhen ? gridDef.alertWhen[idx] : null;
+                            const optVal = alerta === 'SI' ? 'NO' : 'SI';
                             selectOpt(gkey, idx, optVal);
                         });
                     } else {
@@ -1052,6 +1101,13 @@
             }
             const st = state.grids[gridDef.key] || {};
             return gridDef.items.map((item, i) => ({ item, valor: st[i] ?? '' }));
+        }
+
+        // Serializa una lista del preoperacional por su key. Devuelve [] si la lista
+        // no aplica para el vehículo actual (ej: "Tanque o carrocería" en grúa/manlift).
+        function serializeGridByKey(key) {
+            const g = PREOP_GRIDS.find(gd => gd.key === key);
+            return g ? serializeGrid(g) : [];
         }
 
         // ════════════════ PROCESAMIENTO Y CARGA DE FOTOS (ONEDRIVE + POWER AUTOMATE) ════════════════
@@ -1218,7 +1274,65 @@
             }
         }
 
+        /* ════════════════ MODO GRÚA / MANLIFT (preoperacional) ════════════════
+           Estas unidades usan listas de chequeo distintas. Cuando el tipo cambia
+           de clase (grúa/manlift ↔ estándar) se reconstruyen SOLO las listas y se
+           ajustan las etiquetas, conservando los datos ya escritos arriba. */
+        function applyPreopVehiculoLabels(grua) {
+            const kmInput = $('pf-kilometraje_inicial');
+            if (kmInput) {
+                const lbl = kmInput.previousElementSibling;
+                if (lbl) lbl.innerHTML = (grua ? 'Horómetro inicial' : 'Kilometraje inicial') + '*';
+                kmInput.placeholder = grua ? 'Ej: 1.250' : 'Ej: 154.300';
+            }
+            const sub = $('veh-subtitle');
+            if (sub) sub.textContent = grua ? 'Cabezote, tipo y horómetro' : 'Cabezote, tipo, tanque y kilometraje';
+        }
+
+        // Muestra/oculta el botón "la licencia no aplica" (solo grúa/manlift).
+        function applyLicenciaNAVisibility(grua) {
+            $('lic-na-wrap')?.classList.toggle('hidden', !grua);
+            if (!grua && state.licenciaNA) setLicenciaNA(false);
+        }
+
+        // Activa/desactiva "la licencia no aplica": deshabilita fecha y categoría,
+        // las vuelve no obligatorias y permite guardar sin licencia.
+        function setLicenciaNA(on) {
+            state.licenciaNA = on;
+            const v = $('pf-licencia_vencimiento');
+            const c = $('pf-licencia_categoria');
+            $('btn-lic-na')?.classList.toggle('is-on', on);
+            if (v) {
+                if (on) { v.value = ''; v.disabled = true; v.dataset.req = 'false'; v.classList.remove('is-error'); v.classList.add('doc-date-off'); }
+                else    { v.disabled = false; v.dataset.req = 'true'; v.classList.remove('doc-date-off'); }
+            }
+            if (c) {
+                if (on) { c.value = ''; c.disabled = true; c.dataset.req = 'false'; }
+                else    { c.disabled = false; c.dataset.req = 'true'; }
+            }
+            if (on) { state.licenciaVencida = false; $('lic-msg-wrap')?.classList.add('hidden'); }
+            else    { evaluateLicencia(); }
+        }
+
+        function syncPreopGruaMode(tipo) {
+            const grua = isGruaManlift(tipo);
+            applyPreopVehiculoLabels(grua);
+            applyLicenciaNAVisibility(grua);
+            if (grua === state.preopGruaMode) return;   // no cambió la clase de vehículo
+            state.preopGruaMode = grua;
+            PREOP_GRIDS = buildPreopGrids(grua);
+            // Cambian ítems/índices: se limpian las respuestas de las listas reconstruidas.
+            PREOP_GRIDS.forEach(g => { state.grids[g.key] = {}; state.docDates[g.key] = {}; });
+            const cont = $('preop-grids');
+            if (cont) {
+                cont.innerHTML = PREOP_GRIDS.map(renderGrid).join('');
+                evaluateAllDocs();
+                refreshCompletion();
+            }
+        }
+
         function handleTipoVehiculoChange(tipo) {
+            syncPreopGruaMode(tipo);
             const placaTanqueInput = $('pf-placa_tanque');
             if (!placaTanqueInput) return;
             const labelEl = placaTanqueInput.previousElementSibling;
@@ -1282,6 +1396,8 @@
         function buildPreopForm() {
             state.lastLookup = null; state.licenciaVencida = false;
             state.docDates = {}; state.docsVencidos = false;
+            state.preopGruaMode = false; state.licenciaNA = false;
+            PREOP_GRIDS = buildPreopGrids(false);
             const f = $('form-preop');
             f.innerHTML = `
                 <div class="sec-card scroll-mt">
@@ -1295,6 +1411,9 @@
                         ${txt('conductor_nombre','Nombre del conductor',{placeholder:'Ej: Juan Pérez'})}
                         ${txt('licencia_vencimiento','Licencia · fecha de vencimiento',{type:'date'})}
                         ${selectField('licencia_categoria','Licencia · categoría',['B1','B2','B3','C1','C2','C3'])}
+                    </div>
+                    <div id="lic-na-wrap" class="hidden px-4 pb-3 -mt-1">
+                        <button type="button" id="btn-lic-na" class="doc-na"><i class="fa-solid fa-ban"></i> La licencia no aplica para esta unidad</button>
                     </div>
                     <div id="lic-msg-wrap" class="hidden px-4 pb-4">
                         <div id="lic-msg" class="rounded-xl px-3.5 py-3 text-[13px] font-semibold flex items-start gap-2"></div>
@@ -1315,7 +1434,7 @@
 
                 <div class="sec-card scroll-mt">
                     <div class="sec-head"><div class="sec-head-ic"><i class="fa-solid fa-truck-front"></i></div>
-                        <div class="flex-1 min-w-0"><div class="sec-head-t">Datos del vehículo</div><div class="sec-head-s">Cabezote, tipo, tanque y kilometraje</div></div>
+                        <div class="flex-1 min-w-0"><div class="sec-head-t">Datos del vehículo</div><div id="veh-subtitle" class="sec-head-s">Cabezote, tipo, tanque y kilometraje</div></div>
                         <span id="veh-hint" class="hidden items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[.06em] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1"><i class="fa-solid fa-bolt"></i> Vehículo recuperado</span>
                     </div>
                     <div class="p-4 grid sm:grid-cols-2 md:grid-cols-4 gap-4">
@@ -1326,7 +1445,7 @@
                     </div>
                 </div>
 
-                ${PREOP_GRIDS.map(renderGrid).join('')}
+                <div id="preop-grids" class="space-y-4">${PREOP_GRIDS.map(renderGrid).join('')}</div>
 
                 <div class="sec-card scroll-mt">
                     <div class="sec-head"><div class="sec-head-ic"><i class="fa-solid fa-pen-to-square"></i></div>
@@ -1357,8 +1476,19 @@
         }
 
         /* ════════════════ CONSTRUCCIÓN DEL FORMULARIO PLAN DE VIAJE ════════════════ */
+        // Tipo de vehículo conocido para el plan (del preoperacional o detectado por placa).
+        function planTipo() { return state.preop?.tipo_vehiculo || state.planTipo || ''; }
+
         function buildPlanForm() {
+            const grua = isGruaManlift(planTipo());
+            PLAN_GRIDS = buildPlanGrids(grua);
             const f = $('form-plan');
+            const kmField = grua
+                ? txt('kilometraje_actual','Horómetro actual',{placeholder:'Ej: 1.250',upper:false,inputmode:'numeric'})
+                : txt('kilometraje_actual','Kilometraje actual',{placeholder:'Ej: 154.300',upper:false,inputmode:'numeric'});
+            const placaField = txt('placa_cabezote', grua ? 'Placa' : 'Placa cabezote', {placeholder:'ABC123'});
+            // En grúa/manlift no aplica placa de tanque/carrocería.
+            const placaTanqueField = grua ? '' : txt('placa_tanque','Placa tanque / carrocería (si aplica)',{placeholder:'R12345',required:false});
             f.innerHTML = `
                 <div class="sec-card scroll-mt">
                     <div class="sec-head"><div class="sec-head-ic"><i class="fa-solid fa-route"></i></div>
@@ -1367,11 +1497,11 @@
                     </div>
                     <div class="p-4 grid sm:grid-cols-2 gap-4">
                         ${txt('fecha','Fecha',{type:'date'})}
-                        ${txt('kilometraje_actual','Kilometraje actual',{placeholder:'Ej: 154.300',upper:false,inputmode:'numeric'})}
+                        ${kmField}
                         ${txt('ruta_origen','Ruta · origen',{placeholder:'Ej: Yopal'})}
                         ${txt('ruta_destino','Ruta · destino',{placeholder:'Ej: Barrancabermeja'})}
-                        ${txt('placa_cabezote','Placa cabezote',{placeholder:'ABC123'})}
-                        ${txt('placa_tanque','Placa tanque / carrocería (si aplica)',{placeholder:'R12345',required:false})}
+                        ${placaField}
+                        ${placaTanqueField}
                         <div class="sm:col-span-2">${txt('conductor_nombre_plan','Nombre del conductor',{placeholder:'Ej: Juan Pérez'})}</div>
                     </div>
                 </div>
@@ -1395,6 +1525,34 @@
                 </div>`;
             // Estado inicial de avance: todo sin responder se marca en rojo suave.
             refreshCompletion();
+        }
+
+        /* En modo "solo plan" no venimos del preoperacional, así que el tipo de vehículo
+           se detecta por la placa. Si cambia la clase (grúa/manlift ↔ estándar) se
+           reconstruye el plan conservando lo que el conductor ya escribió. */
+        const PLAN_FIELD_IDS = ['fecha','kilometraje_actual','ruta_origen','ruta_destino','placa_cabezote','placa_tanque','conductor_nombre_plan'];
+        function rebuildPlanPreserving() {
+            const fpl = $('form-plan');
+            if (!fpl) return;
+            const vals = {};
+            PLAN_FIELD_IDS.forEach(id => { const el = fpl.querySelector('#pf-' + id); if (el) vals[id] = el.value; });
+            buildPlanForm();
+            PLAN_FIELD_IDS.forEach(id => { const el = fpl.querySelector('#pf-' + id); if (el && vals[id] != null) el.value = vals[id]; });
+            refreshCompletion();
+        }
+        async function detectPlanTipo(raw) {
+            if (state.preop?.tipo_vehiculo) return;   // si venimos del preoperacional, ya se conoce
+            const placa = String(raw || '').replace(/\s/g, '').toUpperCase();
+            if (placa.length < 3 || placa === 'DEMO') return;
+            try {
+                const { data, error } = await supabase.rpc('pv_lookup_vehiculo', { p_placa: placa });
+                if (error) return;
+                const row = Array.isArray(data) ? data[0] : data;
+                const tipo = (row && row.encontrado_maestro) ? row.tipo_vehiculo : '';
+                const cambioClase = isGruaManlift(tipo) !== isGruaManlift(state.planTipo);
+                state.planTipo = tipo;
+                if (cambioClase) rebuildPlanPreserving();
+            } catch (err) { console.warn('detect plan tipo:', err); }
         }
 
         /* ════════════════ VALIDACIÓN COMÚN ════════════════ */
@@ -1484,6 +1642,7 @@
             state.lastLookup = null; state.lastVehiculoLookup = null; state.licenciaVencida = false;
             state.docDates = {}; state.docsVencidos = false;
             state.preopPhotos = []; state.planPhotos = [];
+            state.preopGruaMode = false; state.licenciaNA = false; state.planTipo = '';
             buildPreopForm(); buildPlanForm();
         }
 
@@ -1569,13 +1728,13 @@
                 tipo_vehiculo: get('tipo_vehiculo'),
                 placa_tanque: normTanque(get('placa_tanque')),
                 kilometraje_inicial: get('kilometraje_inicial'),
-                documentos_conductor: serializeGrid(PREOP_GRIDS[0]),
-                documentos_vehiculo: serializeGrid(PREOP_GRIDS[1]),
-                revision_electrica: serializeGrid(PREOP_GRIDS[2]),
-                llantas: serializeGrid(PREOP_GRIDS[3]),
-                sistema_frenos: serializeGrid(PREOP_GRIDS[4]),
-                accesorios: serializeGrid(PREOP_GRIDS[5]),
-                tanque_carroceria: serializeGrid(PREOP_GRIDS[6]),
+                documentos_conductor: serializeGridByKey('documentos_conductor'),
+                documentos_vehiculo: serializeGridByKey('documentos_vehiculo'),
+                revision_electrica: serializeGridByKey('revision_electrica'),
+                llantas: serializeGridByKey('llantas'),
+                sistema_frenos: serializeGridByKey('sistema_frenos'),
+                accesorios: serializeGridByKey('accesorios'),
+                tanque_carroceria: serializeGridByKey('tanque_carroceria'), // [] en grúa/manlift
                 novedades: up('novedades'),
                 total_items: total,
                 items_no_conformes: nc,
@@ -1677,8 +1836,9 @@
                 hint?.classList.remove('hidden'); hint?.classList.add('inline-flex');
                 // Encabezado: preoperacional diligenciado = SI; licencia vigente según fecha
                 selectOpt('encabezado', 0, 'SI');
+                // El ítem de licencia vigente no existe en grúa/manlift (encabezado de 1 ítem).
                 const vence = state.preop.licencia_vencimiento;
-                if (vence) selectOpt('encabezado', 1, (vence >= todayISO()) ? 'SI' : 'NO');
+                if (vence && PLAN_GRIDS[0].items.length > 1) selectOpt('encabezado', 1, (vence >= todayISO()) ? 'SI' : 'NO');
             } else {
                 setP('fecha', state.preop?.fecha || '');
             }
@@ -1843,10 +2003,16 @@
                 clearTimeout(lookupTimer);
                 lookupTimer = setTimeout(() => lookupConductor(e.target.value), 450);
             }
-            // Autocompletar por placa del vehículo (con pequeño retardo mientras escribe)
+            // Autocompletar por placa del vehículo (con pequeño retardo mientras escribe).
+            // En el plan (solo-plan) la placa detecta el tipo; en el preoperacional autocompleta.
             if (id === 'pf-placa_cabezote') {
                 clearTimeout(lookupVehiculoTimer);
-                lookupVehiculoTimer = setTimeout(() => lookupVehiculo(e.target.value), 450);
+                const targetEl = e.target;
+                const enPlan = !!targetEl.closest('#form-plan');
+                lookupVehiculoTimer = setTimeout(() => {
+                    if (enPlan) detectPlanTipo(targetEl.value);
+                    else lookupVehiculo(targetEl.value);
+                }, 450);
             }
             // Reevaluar la licencia si el conductor edita la fecha de vencimiento
             if (id === 'pf-licencia_vencimiento') evaluateLicencia();
@@ -1867,7 +2033,10 @@
             }
 
             if (e.target.id === 'pf-conductor_identificacion') lookupConductor(e.target.value);
-            if (e.target.id === 'pf-placa_cabezote') lookupVehiculo(e.target.value);
+            if (e.target.id === 'pf-placa_cabezote') {
+                if (e.target.closest('#form-plan')) detectPlanTipo(e.target.value);
+                else lookupVehiculo(e.target.value);
+            }
             if (e.target.id === 'pf-tipo_vehiculo') {
                 const tipo = e.target.value;
                 incrementVehiculoUsage(tipo);
