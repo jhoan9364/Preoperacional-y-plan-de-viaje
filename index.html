@@ -461,8 +461,11 @@
             planPhotos: [],   // almacenar fotos de soporte de plan de viaje
         };
         const isDemo = () => {
-            const v = (document.getElementById('pf-conductor_nombre')?.value || '').toLowerCase();
-            return v.includes('demo');
+            const name = (document.getElementById('pf-conductor_nombre')?.value || '').toLowerCase();
+            const namePlan = (document.getElementById('pf-conductor_nombre_plan')?.value || '').toLowerCase();
+            const fpPlate = (document.getElementById('form-preop')?.querySelector('#pf-placa_cabezote')?.value || '').toUpperCase().trim();
+            const fplPlate = (document.getElementById('form-plan')?.querySelector('#pf-placa_cabezote')?.value || '').toUpperCase().trim();
+            return name.includes('demo') || namePlan.includes('demo') || fpPlate === 'DEMO' || fplPlate === 'DEMO';
         };
 
         // --- DOM helpers ---
@@ -614,14 +617,42 @@
         /* ════════════════ AUTOCOMPLETAR POR PLACA DEL VEHÍCULO ════════════════ */
         async function lookupVehiculo(raw) {
             const placa = String(raw || '').replace(/\s/g, '').toUpperCase();
-            if (placa.length < 3) return;
+            if (placa === 'DEMO') {
+                state.lastVehiculoLookup = placa;
+                const el = $('pf-tipo_vehiculo');
+                if (el) {
+                    el.disabled = false;
+                    el.classList.remove('bg-gray-100', 'cursor-not-allowed');
+                }
+                return;
+            }
+            if (placa.length < 3) {
+                const el = $('pf-tipo_vehiculo');
+                if (el) {
+                    el.value = '';
+                    el.disabled = false;
+                    el.classList.remove('bg-gray-100', 'cursor-not-allowed');
+                }
+                $('veh-hint')?.classList.add('hidden');
+                return;
+            }
             if (state.lastVehiculoLookup === placa) return; // evitar consultas repetidas
             state.lastVehiculoLookup = placa;
             try {
                 const { data, error } = await supabase.rpc('pv_lookup_vehiculo', { p_placa: placa });
                 if (error) { console.warn('lookup vehiculo:', error); return; }
                 const row = Array.isArray(data) ? data[0] : data;
-                if (row) applyVehiculoLookup(row);
+                if (row && row.encontrado_maestro) {
+                    applyVehiculoLookup(row);
+                } else {
+                    const el = $('pf-tipo_vehiculo');
+                    if (el) {
+                        el.value = '';
+                        el.disabled = false;
+                        el.classList.remove('bg-gray-100', 'cursor-not-allowed');
+                    }
+                    $('veh-hint')?.classList.add('hidden');
+                }
             } catch (err) { console.warn('lookup vehiculo:', err); }
         }
 
@@ -637,7 +668,15 @@
                 const el = $('pf-tipo_vehiculo');
                 if (el) {
                     el.value = row.tipo_vehiculo;
+                    el.disabled = true; // Inhabilitar campo si viene de Maestros
+                    el.classList.add('bg-gray-100', 'cursor-not-allowed');
                     handleTipoVehiculoChange(row.tipo_vehiculo);
+                }
+            } else {
+                const el = $('pf-tipo_vehiculo');
+                if (el) {
+                    el.disabled = false;
+                    el.classList.remove('bg-gray-100', 'cursor-not-allowed');
                 }
             }
 
@@ -1393,6 +1432,49 @@
             if (!validateFields($('form-preop'))) return;
             if (!validateGrids(PREOP_GRIDS)) return;
 
+            const fp  = $('form-preop');
+            const get = (id) => (fp.querySelector('#pf-' + id)?.value || '').trim();
+            const up  = (id) => get(id).toUpperCase();
+
+            // Validar formato de placa del cabezote: letras y números pegados, sin espacios ni guiones
+            const placaCabezote = up('placa_cabezote');
+            const formatRegex = /^[A-Z0-9]+$/;
+            if (placaCabezote !== 'DEMO' && !formatRegex.test(placaCabezote)) {
+                showModal('La Placa Cabezote debe contener solo letras y números pegados (ej: SXS310), sin espacios ni guiones.', 'error');
+                fp.querySelector('#pf-placa_cabezote')?.classList.add('is-error');
+                fp.querySelector('#pf-placa_cabezote')?.scrollIntoView({ behavior:'smooth', block:'center' });
+                return;
+            }
+
+            // Validar existencia en el Maestro de Vehículos (a menos que sea DEMO o Modo Demo)
+            if (placaCabezote !== 'DEMO' && !isDemo()) {
+                const btn = $('btn-preop-submit');
+                const orig = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando placa…';
+                let encontrado = false;
+                try {
+                    const { data, error } = await supabase.rpc('pv_lookup_vehiculo', { p_placa: placaCabezote });
+                    if (!error && data) {
+                        const row = Array.isArray(data) ? data[0] : data;
+                        if (row && row.encontrado_maestro) {
+                            encontrado = true;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Error al validar placa en base de datos:', err);
+                }
+                btn.disabled = false;
+                btn.innerHTML = orig;
+
+                if (!encontrado) {
+                    showModal(`La placa "${placaCabezote}" que está escribiendo no está creada en el listado Maestro Vehículos.`, 'error');
+                    fp.querySelector('#pf-placa_cabezote')?.classList.add('is-error');
+                    fp.querySelector('#pf-placa_cabezote')?.scrollIntoView({ behavior:'smooth', block:'center' });
+                    return;
+                }
+            }
+
             // Bloqueo: con la licencia vencida no se puede guardar hasta actualizar la fecha.
             evaluateLicencia();
             if (state.licenciaVencida) {
@@ -1408,10 +1490,6 @@
                 showModal(`No puedes enviar el preoperacional con ${vencidos.length === 1 ? 'este documento vencido' : 'estos documentos vencidos'}: ${vencidos.join(', ')}. Actualiza ${vencidos.length === 1 ? 'su fecha de vencimiento' : 'sus fechas de vencimiento'} para continuar.`, 'error');
                 return;
             }
-
-            const fp  = $('form-preop');
-            const get = (id) => (fp.querySelector('#pf-' + id)?.value || '').trim();
-            const up  = (id) => get(id).toUpperCase();
 
             // Cálculo del resultado
             let total = 0, nc = 0;
@@ -1557,6 +1635,45 @@
             const get = (id) => (fpl.querySelector('#pf-' + id)?.value || '').trim();
             const up  = (id) => get(id).toUpperCase();
 
+            // Validar formato de placa del cabezote: letras y números pegados, sin espacios ni guiones
+            const placaCabezote = up('placa_cabezote');
+            const formatRegex = /^[A-Z0-9]+$/;
+            if (placaCabezote !== 'DEMO' && !formatRegex.test(placaCabezote)) {
+                showModal('La Placa Cabezote debe contener solo letras y números pegados (ej: SXS310), sin espacios ni guiones.', 'error');
+                fpl.querySelector('#pf-placa_cabezote')?.classList.add('is-error');
+                fpl.querySelector('#pf-placa_cabezote')?.scrollIntoView({ behavior:'smooth', block:'center' });
+                return;
+            }
+
+            // Validar existencia en el Maestro de Vehículos (a menos que sea DEMO o Modo Demo)
+            if (placaCabezote !== 'DEMO' && !isDemo()) {
+                const btn = $('btn-plan-submit');
+                const orig = btn.innerHTML;
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando placa…';
+                let encontrado = false;
+                try {
+                    const { data, error } = await supabase.rpc('pv_lookup_vehiculo', { p_placa: placaCabezote });
+                    if (!error && data) {
+                        const row = Array.isArray(data) ? data[0] : data;
+                        if (row && row.encontrado_maestro) {
+                            encontrado = true;
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Error al validar placa en base de datos:', err);
+                }
+                btn.disabled = false;
+                btn.innerHTML = orig;
+
+                if (!encontrado) {
+                    showModal(`La placa "${placaCabezote}" que está escribiendo no está creada en el listado Maestro Vehículos.`, 'error');
+                    fpl.querySelector('#pf-placa_cabezote')?.classList.add('is-error');
+                    fpl.querySelector('#pf-placa_cabezote')?.scrollIntoView({ behavior:'smooth', block:'center' });
+                    return;
+                }
+            }
+
             // Conteo de alertas de riesgo
             let alertas = 0;
             PLAN_GRIDS.forEach(g => {
@@ -1572,7 +1689,7 @@
                 conductor_nombre: up('conductor_nombre_plan'),
                 ruta_origen: up('ruta_origen'),
                 ruta_destino: up('ruta_destino'),
-                placa_cabezote: up('placa_cabezote'),
+                placa_cabezote: placaCabezote,
                 placa_tanque: normTanque(get('placa_tanque')),
                 encabezado: serializeGrid(PLAN_GRIDS[0]),
                 evaluacion_riesgo: serializeGrid(PLAN_GRIDS[1]),
@@ -1584,7 +1701,7 @@
 
             const btn = $('btn-plan-submit'); const orig = btn.innerHTML;
 
-            if (isDemoPlan()) { finishThanks(true); return; }
+            if (isDemo()) { finishThanks(true); return; }
 
             btn.disabled = true;
             const hasPhotos = state.planPhotos && state.planPhotos.length > 0;
@@ -1619,7 +1736,7 @@
             }
         });
 
-        const isDemoPlan = () => ($('pf-conductor_nombre_plan')?.value || '').toLowerCase().includes('demo');
+
 
         /* ════════════════ PANTALLA DE GRACIAS ════════════════ */
         function finishThanks(demo) {
@@ -1654,8 +1771,8 @@
         document.addEventListener('input', (e) => {
             const id = e.target.id;
             // Badge demo
-            if (id === 'pf-conductor_nombre' || id === 'pf-conductor_nombre_plan') {
-                $('demo-badge').classList.toggle('hidden', !(isDemo() || isDemoPlan()));
+            if (id === 'pf-conductor_nombre' || id === 'pf-conductor_nombre_plan' || id === 'pf-placa_cabezote') {
+                $('demo-badge').classList.toggle('hidden', !isDemo());
             }
             // Kilometraje con separador de miles (preoperacional y plan)
             if (id === 'pf-kilometraje_inicial' || id === 'pf-kilometraje_actual') {
@@ -1679,7 +1796,11 @@
         document.addEventListener('change', (e) => {
             // Limpieza de espacios en blanco adicionales (evita guardar espacios repetidos o al inicio/final)
             if (e.target.tagName === 'INPUT' && e.target.type === 'text') {
-                e.target.value = e.target.value.trim().replace(/\s+/g, ' ');
+                if (e.target.id === 'pf-placa_cabezote' || e.target.id === 'pf-placa_tanque') {
+                    e.target.value = e.target.value.toUpperCase().trim();
+                } else {
+                    e.target.value = e.target.value.trim().replace(/\s+/g, ' ');
+                }
             }
             if (e.target.tagName === 'TEXTAREA') {
                 e.target.value = e.target.value.trim();
