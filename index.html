@@ -626,7 +626,9 @@
             if (state.lastLookup === ced) return;   // no repetir la misma consulta
             state.lastLookup = ced;
             try {
-                const { data, error } = await supabase.rpc('pv_lookup_conductor', { p_identificacion: ced });
+                const { data, error } = await supabase.functions.invoke('pv-lookup-conductor', {
+                    body: { p_identificacion: ced }
+                });
                 if (error) { console.warn('lookup conductor:', error); return; }
                 const row = Array.isArray(data) ? data[0] : data;
                 if (row) applyConductorLookup(row);
@@ -730,7 +732,7 @@
                 }
                 return;
             }
-            if (placa.length < 3) {
+            if (placa.length < 5) {
                 const el = $('pf-tipo_vehiculo');
                 if (el) {
                     el.value = '';
@@ -743,7 +745,9 @@
             if (state.lastVehiculoLookup === placa) return; // evitar consultas repetidas
             state.lastVehiculoLookup = placa;
             try {
-                const { data, error } = await supabase.rpc('pv_lookup_vehiculo', { p_placa: placa });
+                const { data, error } = await supabase.functions.invoke('pv-lookup-vehiculo', {
+                    body: { p_placa: placa }
+                });
                 if (error) { console.warn('lookup vehiculo:', error); return; }
                 const row = Array.isArray(data) ? data[0] : data;
                 if (row && row.encontrado_maestro) {
@@ -1543,9 +1547,11 @@
         async function detectPlanTipo(raw) {
             if (state.preop?.tipo_vehiculo) return;   // si venimos del preoperacional, ya se conoce
             const placa = String(raw || '').replace(/\s/g, '').toUpperCase();
-            if (placa.length < 3 || placa === 'DEMO') return;
+            if (placa.length < 5 || placa === 'DEMO') return;
             try {
-                const { data, error } = await supabase.rpc('pv_lookup_vehiculo', { p_placa: placa });
+                const { data, error } = await supabase.functions.invoke('pv-lookup-vehiculo', {
+                    body: { p_placa: placa }
+                });
                 if (error) return;
                 const row = Array.isArray(data) ? data[0] : data;
                 const tipo = (row && row.encontrado_maestro) ? row.tipo_vehiculo : '';
