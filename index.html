@@ -521,6 +521,14 @@
             lastLookup: null, // ultima cedula consultada (evita consultas repetidas)
             lastVehiculoLookup: null, // ultima placa consultada (evita consultas repetidas)
             licenciaVencida: false, // bloquea el envio del preoperacional
+            docDates: {},     // { gridKey: { itemIndex: { fecha:'', na:false } } }
+            docsVencidos: false, // bloquea el envio si hay documentos vencidos
+            preopPhotos: [],  // almacenar fotos de soporte de preoperacional
+            planPhotos: [],   // almacenar fotos de soporte de plan de viaje
+            preopGruaMode: false, // listas adecuadas a grúa/manlift en el preoperacional
+            licenciaNA: false,    // "la licencia no aplica" (grúa/manlift sin licencia)
+            planTipo: '',         // tipo de vehículo detectado para el plan (modo solo-plan)
+            redirectedToPlan: false, // evita la redirección automática consecutiva si vuelve atrás
         };
 
         // Alerta de cierre involuntario
@@ -531,15 +539,6 @@
                 return e.returnValue;
             }
         });
-            docDates: {},     // { gridKey: { itemIndex: { fecha:'', na:false } } }
-            docsVencidos: false, // bloquea el envio si hay documentos vencidos
-            preopPhotos: [],  // almacenar fotos de soporte de preoperacional
-            planPhotos: [],   // almacenar fotos de soporte de plan de viaje
-            preopGruaMode: false, // listas adecuadas a grúa/manlift en el preoperacional
-            licenciaNA: false,    // "la licencia no aplica" (grúa/manlift sin licencia)
-            planTipo: '',         // tipo de vehículo detectado para el plan (modo solo-plan)
-            redirectedToPlan: false, // evita la redirección automática consecutiva si vuelve atrás
-        };
         const isDemo = () => {
             const name = (document.getElementById('pf-conductor_nombre')?.value || '').toLowerCase();
             const namePlan = (document.getElementById('pf-conductor_nombre_plan')?.value || '').toLowerCase();
