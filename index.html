@@ -271,7 +271,7 @@
                     <i class="fa-solid fa-arrow-left"></i> Volver
                 </button>
                 <button type="button" id="btn-preop-submit" class="btn-brand order-1 sm:order-2 flex-1 font-bold rounded-xl text-sm px-5 py-3.5 flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-paper-plane"></i> Enviar Preoperacional
+                    Continuar al Plan de Viaje (Paso 2) <i class="fa-solid fa-arrow-right"></i>
                 </button>
             </div>
         </section>
@@ -517,9 +517,20 @@
             grids: {},        // { gridKey: { itemIndex: valor } }
             preop: null,      // datos guardados del preoperacional (para encadenar/prefijar)
             preopId: null,
+            planCompletado: false, // evita alerta de cierre involuntario al finalizar todo
             lastLookup: null, // ultima cedula consultada (evita consultas repetidas)
             lastVehiculoLookup: null, // ultima placa consultada (evita consultas repetidas)
             licenciaVencida: false, // bloquea el envio del preoperacional
+        };
+
+        // Alerta de cierre involuntario
+        window.addEventListener('beforeunload', (e) => {
+            if (state.preopId && !state.planCompletado) {
+                e.preventDefault();
+                e.returnValue = 'Aún no has diligenciado el Plan de Viaje obligatorio para iniciar el servicio. ¿Deseas salir?';
+                return e.returnValue;
+            }
+        });
             docDates: {},     // { gridKey: { itemIndex: { fecha:'', na:false } } }
             docsVencidos: false, // bloquea el envio si hay documentos vencidos
             preopPhotos: [],  // almacenar fotos de soporte de preoperacional
@@ -1659,7 +1670,7 @@
         $('btn-start-preop').addEventListener('click', () => { buildPreopForm(); show('preop'); });
         $('btn-only-plan').addEventListener('click', () => { startPlan(false); });
         $('btn-preop-cancel').addEventListener('click', () => show('welcome'));
-        $('btn-plan-cancel').addEventListener('click', () => { state.preop ? show('preop-done') : show('welcome'); });
+        $('btn-plan-cancel').addEventListener('click', () => { state.preop ? show('preop') : show('welcome'); });
         $('btn-finish-after-preop').addEventListener('click', () => {
             clearTimeout(redirectTimeout);
             clearInterval(redirectInterval);
@@ -1675,6 +1686,7 @@
 
         function resetAll() {
             state.grids = {}; state.preop = null; state.preopId = null;
+            state.planCompletado = false;
             state.lastLookup = null; state.lastVehiculoLookup = null; state.licenciaVencida = false;
             state.docDates = {}; state.docsVencidos = false;
             state.preopPhotos = []; state.planPhotos = [];
@@ -1799,7 +1811,11 @@
 
             if (isDemo()) {
                 state.preopId = null;
-                renderPreopDone(true);
+                if (apto) {
+                    startPlan(true);
+                } else {
+                    renderPreopDone(true);
+                }
                 return;
             }
 
@@ -1831,8 +1847,13 @@
                 const { error } = await supabase.from('pv_preoperacionales').insert(payload);
                 if (error) throw error;
                 state.preopId = preopId;
-                state.redirectedToPlan = false; // Resetear la bandera para el nuevo flujo de redirección
-                renderPreopDone(false);
+                if (apto) {
+                    state.redirectedToPlan = true;
+                    startPlan(true);
+                } else {
+                    state.redirectedToPlan = false;
+                    renderPreopDone(false);
+                }
             } catch (err) {
                 console.error('Error guardando preoperacional:', err);
                 showModal('No pudimos registrar el preoperacional. Verifica tu conexión e inténtalo de nuevo.', 'error');
@@ -2008,7 +2029,7 @@
 
             const btn = $('btn-plan-submit'); const orig = btn.innerHTML;
 
-            if (isDemo()) { finishThanks(true); return; }
+            if (isDemo()) { state.planCompletado = true; finishThanks(true); return; }
 
             btn.disabled = true;
             const hasPhotos = state.planPhotos && state.planPhotos.length > 0;
@@ -2035,6 +2056,7 @@
             try {
                 const { error } = await supabase.from('pv_planes_viaje').insert(payload);
                 if (error) throw error;
+                state.planCompletado = true;
                 finishThanks(false);
             } catch (err) {
                 console.error('Error guardando plan de viaje:', err);
