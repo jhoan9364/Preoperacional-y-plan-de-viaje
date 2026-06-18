@@ -521,6 +521,8 @@
             planCompletado: false, // evita alerta de cierre involuntario al finalizar todo
             lastLookup: null, // ultima cedula consultada (evita consultas repetidas)
             lastVehiculoLookup: null, // ultima placa consultada (evita consultas repetidas)
+            kmRef: null,      // referencia de km de la placa { ultimo_km, ultima_fecha, promedio_diario, num_registros }
+            lastKmLookup: null, // ultima placa consultada para km (evita consultas repetidas)
             licenciaVencida: false, // bloquea el envio del preoperacional
             docDates: {},     // { gridKey: { itemIndex: { fecha:'', na:false } } }
             docsVencidos: false, // bloquea el envio si hay documentos vencidos
@@ -625,12 +627,14 @@
         }
         $('modal-close-btn').addEventListener('click', () => $('modal').classList.add('hidden'));
 
-        function showConfirmModal(text, onConfirm, onCancel) {
+        function showConfirmModal(text, onConfirm, onCancel, confirmLabel, cancelLabel) {
             $('modal-text').innerHTML = text;
             const icon = $('modal-icon');
             icon.className = 'mx-auto w-12 h-12 rounded-full bg-amber-50 text-amber-500 flex items-center justify-center mb-3';
             icon.innerHTML = '<i class="fa-solid fa-truck-front text-2xl"></i>';
-            
+            $('modal-confirm-btn').textContent = confirmLabel || 'Sí, el mismo';
+            $('modal-cancel-btn').textContent = cancelLabel || 'No, otro';
+
             $('modal-close-btn').classList.add('hidden');
             $('modal-btn-container').classList.remove('hidden');
             
@@ -860,6 +864,102 @@
             hint?.classList.remove('hidden'); hint?.classList.add('inline-flex');
 
             evaluateAllDocs();
+        }
+
+        /* ════════════════ VALIDACIÓN DE KILOMETRAJE (anti-errores de digitación) ════════════════
+           Compara el km que digita el conductor con el último km real de la placa para evitar
+           que un dato erróneo dañe la proyección de Mantenimiento. NO toca el guardado, el
+           historial ni el autorrellenado: solo lee un agregado por placa (edge function propia). */
+        let kmGateOverride = false; // el conductor ya confirmó un km atípico → dejar pasar una vez
+
+        // Parsea el km del formulario (espejo de cleanKm): dígitos, > 0 y ≤ 3.000.000.
+        function parseKmForm(raw) {
+            const digits = String(raw || '').replace(/\D/g, '');
+            if (!digits) return null;
+            const n = parseInt(digits, 10);
+            if (!Number.isFinite(n) || n <= 0 || n > 3000000) return null;
+            return n;
+        }
+
+        // Trae el último km de la placa. Independiente del autorrellenado: si falla, no
+        // bloquea nada (la placa simplemente queda sin referencia y no se valida).
+        async function fetchUltimoKm(raw) {
+            const placa = String(raw || '').replace(/\s/g, '').toUpperCase();
+            if (placa === 'DEMO' || placa.length < 5) { state.kmRef = null; return; }
+            if (state.lastKmLookup === placa) return; // evitar consultas repetidas
+            state.lastKmLookup = placa;
+            state.kmRef = null;
+            try {
+                const { data, error } = await supabase.functions.invoke('pv-lookup-kilometraje', {
+                    body: { p_placa: placa }
+                });
+                if (error) { console.warn('lookup kilometraje:', error); return; }
+                const row = Array.isArray(data) ? data[0] : data;
+                if (row && row.ultimo_km != null) {
+                    state.kmRef = {
+                        placa,
+                        ultimo_km: Number(row.ultimo_km),
+                        ultima_fecha: row.ultima_fecha || null,
+                        promedio_diario: row.promedio_diario != null ? Number(row.promedio_diario) : null,
+                        num_registros: Number(row.num_registros || 0),
+                    };
+                }
+            } catch (err) { console.warn('lookup kilometraje:', err); }
+        }
+
+        // Evalúa si el km digitado es verosímil contra la referencia de la placa.
+        // Devuelve { ok:true } o { ok:false, tipo:'menor'|'mayor', ultimo, nuevo, fecha }.
+        function checkKilometraje(rawNuevo) {
+            const ref = state.kmRef;
+            if (!ref || !ref.ultimo_km) return { ok: true };   // placa sin historial → no validar
+            const nuevo = parseKmForm(rawNuevo);
+            if (nuevo == null) return { ok: true };            // vacío → lo cubre "campo requerido"
+            const ultimo = ref.ultimo_km;
+            if (nuevo < ultimo) return { ok: false, tipo: 'menor', ultimo, nuevo, fecha: ref.ultima_fecha };
+            // Banda superior MUY holgada: 3× el promedio diario por día transcurrido, piso 3.000 km.
+            const du = daysUntil(ref.ultima_fecha);
+            const dias = Math.min(du == null ? 1 : Math.max(1, -du), 400);
+            const promDia = ref.promedio_diario && ref.promedio_diario > 0 ? ref.promedio_diario : 220;
+            const tope = ultimo + Math.max(dias * promDia * 3, 3000);
+            if (nuevo > tope) return { ok: false, tipo: 'mayor', ultimo, nuevo, fecha: ref.ultima_fecha };
+            return { ok: true };
+        }
+
+        function kmMensaje(r, placa) {
+            const fechaTxt = r.fecha ? `el ${fmtFechaLarga(r.fecha)}` : 'su último servicio';
+            const ult = formatMiles(String(r.ultimo));
+            const nue = formatMiles(String(r.nuevo));
+            if (r.tipo === 'menor') {
+                return `El último kilometraje registrado para la placa <b>${placa}</b> fue <b>${ult} km</b> (${fechaTxt}). `
+                     + `Escribiste <b>${nue} km</b>, <b>menor</b> al anterior — el odómetro no debería disminuir.<br><br>`
+                     + `¿El kilometraje <b>${nue}</b> es correcto?`;
+            }
+            return `El último kilometraje registrado para la placa <b>${placa}</b> fue <b>${ult} km</b> (${fechaTxt}). `
+                 + `Escribiste <b>${nue} km</b>, mucho <b>mayor</b> de lo esperado — revisa que no sobre un dígito.<br><br>`
+                 + `¿El kilometraje <b>${nue}</b> es correcto?`;
+        }
+
+        // Gate antes de guardar. true → puede continuar. Si el km es atípico, abre el modal
+        // de confirmación; al confirmar reintenta el envío con la bandera puesta.
+        function kmGatePass(rawNuevo, placa, kmFieldId, retry) {
+            if (kmGateOverride) { kmGateOverride = false; return true; }
+            const r = checkKilometraje(rawNuevo);
+            if (r.ok) return true;
+            showConfirmModal(
+                kmMensaje(r, placa),
+                () => { kmGateOverride = true; retry(); },
+                () => {
+                    const campo = $(kmFieldId);
+                    if (campo) {
+                        campo.classList.add('is-error');
+                        campo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        campo.focus();
+                    }
+                },
+                'Sí, es correcto',
+                'Corregir'
+            );
+            return false;
         }
 
         // Evalúa la fecha de vencimiento de la licencia y muestra el aviso adecuado.
@@ -1763,6 +1863,10 @@
                 return;
             }
 
+            // Validación de kilometraje: evita que un km mal digitado dañe el plan de
+            // mantenimiento (el odómetro no debería disminuir ni saltar de más). Confirmable.
+            if (!isDemo() && !kmGatePass(get('kilometraje_inicial'), placaCabezote, 'pf-kilometraje_inicial', () => $('btn-preop-submit').click())) return;
+
             // Cálculo del resultado
             let total = 0, nc = 0;
             PREOP_GRIDS.forEach(g => {
@@ -2002,6 +2106,9 @@
                 }
             }
 
+            // Validación de kilometraje (mismo criterio que el preoperacional). Confirmable.
+            if (!isDemo() && !kmGatePass(get('kilometraje_actual'), placaCabezote, 'pf-kilometraje_actual', () => $('btn-plan-submit').click())) return;
+
             // Conteo de alertas de riesgo
             let alertas = 0;
             PLAN_GRIDS.forEach(g => {
@@ -2123,6 +2230,7 @@
                 lookupVehiculoTimer = setTimeout(() => {
                     if (enPlan) detectPlanTipo(targetEl.value);
                     else lookupVehiculo(targetEl.value);
+                    fetchUltimoKm(targetEl.value); // referencia de km para validar (independiente)
                 }, 450);
             }
             // Reevaluar la licencia si el conductor edita la fecha de vencimiento
@@ -2147,6 +2255,7 @@
             if (e.target.id === 'pf-placa_cabezote') {
                 if (e.target.closest('#form-plan')) detectPlanTipo(e.target.value);
                 else lookupVehiculo(e.target.value);
+                fetchUltimoKm(e.target.value); // referencia de km para validar (independiente)
             }
             if (e.target.id === 'pf-tipo_vehiculo') {
                 const tipo = e.target.value;
