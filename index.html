@@ -919,20 +919,26 @@
             await fetchUltimoKm(placa);
         }
 
-        // Evalúa si el km digitado es verosímil contra la referencia de la placa.
+        // Evalúa si el km digitado es verosímil contra la referencia REAL del vehículo.
+        // Banda ADAPTATIVA: usa el promedio km/día PROPIO del vehículo cuando tiene ≥2 lecturas
+        // reales y coherentes; si no, el de la flota (20.000 km / 3 meses ≈ 220 km/día).
         // Devuelve { ok:true } o { ok:false, tipo:'menor'|'mayor', ultimo, nuevo, fecha }.
-        function checkKilometraje(rawNuevo) {
+        function checkKilometraje(rawNuevo, rawFecha) {
             const ref = state.kmRef;
             if (!ref || !ref.ultimo_km) return { ok: true };   // placa sin historial → no validar
             const nuevo = parseKmForm(rawNuevo);
             if (nuevo == null) return { ok: true };            // vacío → lo cubre "campo requerido"
             const ultimo = ref.ultimo_km;
             if (nuevo < ultimo) return { ok: false, tipo: 'menor', ultimo, nuevo, fecha: ref.ultima_fecha };
-            // Banda superior MUY holgada: 3× el promedio diario por día transcurrido, piso 3.000 km.
-            const du = daysUntil(ref.ultima_fecha);
-            const dias = Math.min(du == null ? 1 : Math.max(1, -du), 400);
-            const promDia = ref.promedio_diario && ref.promedio_diario > 0 ? ref.promedio_diario : 220;
-            const tope = ultimo + Math.max(dias * promDia * 3, 3000);
+            // Ritmo del vehículo: su propio promedio km/día (≥2 lecturas) o el de la flota.
+            const avgDia = (ref.promedio_diario && ref.promedio_diario > 0) ? ref.promedio_diario : (20000 / 91);
+            // Días entre la última lectura y la fecha de este registro (lo que PUDO recorrer).
+            const nuevaFecha = (rawFecha && /^\d{4}-\d{2}-\d{2}$/.test(rawFecha)) ? rawFecha : todayISO();
+            const ms = new Date(nuevaFecha + 'T00:00:00') - new Date(ref.ultima_fecha + 'T00:00:00');
+            const diasGap = Math.min(Math.max(Number.isFinite(ms) ? Math.round(ms / 86400000) : 1, 1), 180);
+            // Tope plausible: 4× lo que recorrería a su ritmo, con pisos de seguridad (un mes de
+            // ritmo, y 1.000 km mínimo) para no molestar por un viaje puntual largo.
+            const tope = ultimo + Math.max(diasGap * avgDia * 4, avgDia * 30, 1000);
             if (nuevo > tope) return { ok: false, tipo: 'mayor', ultimo, nuevo, fecha: ref.ultima_fecha };
             return { ok: true };
         }
@@ -953,9 +959,9 @@
 
         // Gate antes de guardar. true → puede continuar. Si el km es atípico, abre el modal
         // de confirmación; al confirmar reintenta el envío con la bandera puesta.
-        function kmGatePass(rawNuevo, placa, kmFieldId, retry) {
+        function kmGatePass(rawNuevo, rawFecha, placa, kmFieldId, retry) {
             if (kmGateOverride) { kmGateOverride = false; return true; }
-            const r = checkKilometraje(rawNuevo);
+            const r = checkKilometraje(rawNuevo, rawFecha);
             if (r.ok) return true;
             showConfirmModal(
                 kmMensaje(r, placa),
@@ -1879,7 +1885,7 @@
             // mantenimiento (el odómetro no debería disminuir ni saltar de más). Confirmable.
             if (!isDemo()) {
                 await ensureKmRef(placaCabezote); // asegura la referencia aunque la placa se haya autocompletado
-                if (!kmGatePass(get('kilometraje_inicial'), placaCabezote, 'pf-kilometraje_inicial', () => $('btn-preop-submit').click())) return;
+                if (!kmGatePass(get('kilometraje_inicial'), get('fecha'), placaCabezote, 'pf-kilometraje_inicial', () => $('btn-preop-submit').click())) return;
             }
 
             // Cálculo del resultado
@@ -2124,7 +2130,7 @@
             // Validación de kilometraje (mismo criterio que el preoperacional). Confirmable.
             if (!isDemo()) {
                 await ensureKmRef(placaCabezote);
-                if (!kmGatePass(get('kilometraje_actual'), placaCabezote, 'pf-kilometraje_actual', () => $('btn-plan-submit').click())) return;
+                if (!kmGatePass(get('kilometraje_actual'), get('fecha'), placaCabezote, 'pf-kilometraje_actual', () => $('btn-plan-submit').click())) return;
             }
 
             // Conteo de alertas de riesgo
