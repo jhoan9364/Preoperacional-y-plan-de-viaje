@@ -701,6 +701,7 @@
                     if (cabEl) {
                         cabEl.value = row.placa_cabezote;
                         lookupVehiculo(row.placa_cabezote, true);
+                        fetchUltimoKm(row.placa_cabezote); // precargar referencia de km (autocompletar no dispara input)
                     }
                     if (row.placa_tanque) {
                         const tanEl = $('pf-placa_tanque');
@@ -905,6 +906,17 @@
                     };
                 }
             } catch (err) { console.warn('lookup kilometraje:', err); }
+        }
+
+        // Garantiza que la referencia de km corresponda a la placa actual ANTES de guardar.
+        // Necesario porque la placa puede llenarse por código (autocompletar "mismo vehículo",
+        // o el plan que hereda la placa del preoperacional) y eso NO dispara el listener de input.
+        async function ensureKmRef(rawPlaca) {
+            const placa = String(rawPlaca || '').replace(/\s/g, '').toUpperCase();
+            if (!placa || placa === 'DEMO' || placa.length < 5) return;
+            if (state.kmRef && state.kmRef.placa === placa) return; // ya la tenemos
+            state.lastKmLookup = null; // forzar la consulta aunque se haya intentado antes
+            await fetchUltimoKm(placa);
         }
 
         // Evalúa si el km digitado es verosímil contra la referencia de la placa.
@@ -1865,7 +1877,10 @@
 
             // Validación de kilometraje: evita que un km mal digitado dañe el plan de
             // mantenimiento (el odómetro no debería disminuir ni saltar de más). Confirmable.
-            if (!isDemo() && !kmGatePass(get('kilometraje_inicial'), placaCabezote, 'pf-kilometraje_inicial', () => $('btn-preop-submit').click())) return;
+            if (!isDemo()) {
+                await ensureKmRef(placaCabezote); // asegura la referencia aunque la placa se haya autocompletado
+                if (!kmGatePass(get('kilometraje_inicial'), placaCabezote, 'pf-kilometraje_inicial', () => $('btn-preop-submit').click())) return;
+            }
 
             // Cálculo del resultado
             let total = 0, nc = 0;
@@ -2107,7 +2122,10 @@
             }
 
             // Validación de kilometraje (mismo criterio que el preoperacional). Confirmable.
-            if (!isDemo() && !kmGatePass(get('kilometraje_actual'), placaCabezote, 'pf-kilometraje_actual', () => $('btn-plan-submit').click())) return;
+            if (!isDemo()) {
+                await ensureKmRef(placaCabezote);
+                if (!kmGatePass(get('kilometraje_actual'), placaCabezote, 'pf-kilometraje_actual', () => $('btn-plan-submit').click())) return;
+            }
 
             // Conteo de alertas de riesgo
             let alertas = 0;
