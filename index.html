@@ -358,6 +358,51 @@
         </div>
     </div>
 
+    <!-- ════════════════ CONSENTIMIENTO: TRATAMIENTO DE DATOS (Ley 1581 de 2012) ════════════════ -->
+    <!-- Capa 100% del lado del cliente: NO escribe en Supabase, NO toca el guardado,
+         el historial ni el autorrellenado (pv_lookup_*). Solo deja continuar tras aceptar. -->
+    <div id="consent-gate" class="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md my-auto fade-up">
+            <div class="p-6 sm:p-7">
+                <div class="mx-auto w-14 h-14 rounded-2xl bg-[#181818] text-[#FFD22E] flex items-center justify-center mb-4">
+                    <i class="fa-solid fa-user-shield text-2xl"></i>
+                </div>
+                <h2 class="text-xl font-extrabold text-[#181818] text-center">Tratamiento de Datos Personales</h2>
+                <p class="text-sm text-gray-600 mt-3 leading-relaxed">
+                    Antes de diligenciar tu <b>Preoperacional</b> y <b>Plan de Viaje</b>, autorizas a
+                    <b>TRANSHICOL S.A.S.</b> a recolectar y tratar los datos personales que registres
+                    (identificación, licencia de conducción, afiliaciones a seguridad social y datos del vehículo),
+                    con la finalidad de gestionar la seguridad vial, el control operativo y el cumplimiento del
+                    Sistema de Gestión Integral (PESV).
+                </p>
+                <p class="text-xs text-gray-500 mt-2 leading-relaxed">
+                    El tratamiento se realiza conforme a la <b>Ley 1581 de 2012</b> y el <b>Decreto 1377 de 2013</b>.
+                    Como titular tienes derecho a conocer, actualizar, rectificar y solicitar la supresión de tus datos.
+                </p>
+                <label class="flex items-start gap-3 mt-5 cursor-pointer select-none rounded-xl border border-gray-200 p-3 hover:bg-gray-50 transition-colors">
+                    <input id="consent-check" type="checkbox" class="mt-0.5 w-5 h-5 accent-[#FFD22E] shrink-0">
+                    <span class="text-sm font-semibold text-[#181818]">He leído y <b>autorizo</b> el tratamiento de mis datos personales.</span>
+                </label>
+                <button id="consent-accept" type="button" disabled
+                    class="btn-brand w-full mt-5 font-bold rounded-xl text-sm px-5 py-3.5 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Aceptar y continuar <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <p class="text-center text-[10px] text-gray-400 mt-3">TRANSHICOL S.A.S · Política de Tratamiento de Datos Personales</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        // Wiring aislado del consentimiento (script clásico, sin dependencias).
+        (function () {
+            var gate = document.getElementById('consent-gate');
+            var chk  = document.getElementById('consent-check');
+            var btn  = document.getElementById('consent-accept');
+            if (!gate || !chk || !btn) return;
+            chk.addEventListener('change', function () { btn.disabled = !chk.checked; });
+            btn.addEventListener('click', function () { gate.style.display = 'none'; });
+        })();
+    </script>
+
     <script type="module">
         // =====================================================================
         //  SUPABASE — el formato escribe en el MISMO proyecto que
