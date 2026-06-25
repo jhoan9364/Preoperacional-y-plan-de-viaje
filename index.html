@@ -198,6 +198,104 @@
             .sec-head { padding: 13px 14px; }
             .sec-head-t { font-size: 14.5px; }
         }
+
+        /* ════════════════════════════════════════════════════════════════════
+           ✦ PULIDO MÓVIL — experiencia premium para el conductor
+           Solo estética/animación. NO toca el guardado, el historial ni el
+           autorrellenado (pv_lookup_*): no cambia IDs, nombres ni lógica.
+           ════════════════════════════════════════════════════════════════════ */
+
+        /* Scroll suave al saltar entre secciones; respeta "reducir movimiento". */
+        html { scroll-behavior: smooth; }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+                transition-duration: .001ms !important; scroll-behavior: auto !important;
+            }
+        }
+
+        /* — Feedback táctil: todo lo que se toca "responde" al dedo — */
+        .chk-opt:active, .doc-na:active, .bulk-chip:active { transform: scale(.93); }
+        .btn-brand:active:not(:disabled) { transform: translateY(0) scale(.98); box-shadow: 0 4px 12px rgba(255,210,46,.35); }
+        .btn-ghost:active { transform: scale(.985); }
+
+        /* — Opción elegida: pequeño "pop" satisfactorio + sombra del color — */
+        @keyframes optPop { 0%{transform:scale(.88);} 55%{transform:scale(1.08);} 100%{transform:scale(1);} }
+        .chk-opt.sel-good, .chk-opt.sel-bad, .chk-opt.sel-warn,
+        .chk-opt.sel-na, .chk-opt.sel-neutral {
+            animation: optPop .26s cubic-bezier(.2,.8,.3,1.45) both; font-weight: 800;
+        }
+        .chk-opt.sel-good    { box-shadow: 0 5px 14px -5px rgba(22,163,74,.55); }
+        .chk-opt.sel-bad     { box-shadow: 0 5px 14px -5px rgba(220,38,38,.55); }
+        .chk-opt.sel-warn    { box-shadow: 0 5px 14px -5px rgba(217,119,6,.55); }
+        .chk-opt.sel-neutral { box-shadow: 0 5px 14px -5px rgba(24,24,24,.5); }
+        .chk-opt.sel-na      { box-shadow: 0 4px 10px -5px rgba(100,116,139,.45); }
+
+        /* — Estado de cada fila con una franja lateral clara (falta / listo) — */
+        .chk-row { position: relative; transition: background .2s ease; }
+        .chk-row.is-pending::before, .chk-row.is-ok::before, .chk-row.doc-expired::before {
+            content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; border-radius: 0 3px 3px 0;
+        }
+        .chk-row.is-pending::before  { background: #f87171; }
+        .chk-row.doc-expired::before { background: #dc2626; }
+        .chk-row.is-ok::before       { background: #34d399; }
+
+        /* — Profundidad sutil en el ícono de cada sección — */
+        .sec-head-ic {
+            background: linear-gradient(145deg, #262626, #0c0c0c);
+            box-shadow: 0 6px 14px -7px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08);
+        }
+
+        /* — Entrada elegante y escalonada de las tarjetas del formulario — */
+        @keyframes secIn { from { opacity:0; transform: translateY(14px) scale(.992); } to { opacity:1; transform:none; } }
+        #form-preop > .sec-card, #form-plan > .sec-card,
+        #form-preop #preop-grids > .sec-card, #form-plan > .sec-card {
+            animation: secIn .5s cubic-bezier(.22,.61,.36,1) both;
+        }
+        #form-preop > .sec-card:nth-child(2), #form-plan > .sec-card:nth-child(2) { animation-delay:.05s; }
+        #form-preop > .sec-card:nth-child(3), #form-plan > .sec-card:nth-child(3) { animation-delay:.10s; }
+        #form-preop > .sec-card:nth-child(4), #form-plan > .sec-card:nth-child(4) { animation-delay:.15s; }
+        #preop-grids > .sec-card:nth-child(2) { animation-delay:.05s; }
+        #preop-grids > .sec-card:nth-child(3) { animation-delay:.10s; }
+        #preop-grids > .sec-card:nth-child(4) { animation-delay:.15s; }
+
+        /* — Brillo vivo en la barra de progreso superior — */
+        #docbar-progress { position: relative; overflow: hidden; }
+        #docbar-progress::after {
+            content: ""; position: absolute; inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent);
+            transform: translateX(-100%); animation: progShine 2.4s ease-in-out infinite;
+        }
+        @keyframes progShine { 0%{transform:translateX(-100%);} 60%,100%{transform:translateX(260%);} }
+
+        /* ════════ Toques finos solo en celular ════════ */
+        @media (max-width: 640px) {
+            /* Respeta el notch / barra inferior de los teléfonos modernos. */
+            body { padding-bottom: calc(2.5rem + env(safe-area-inset-bottom)); }
+
+            /* Tarjetas con más aire, esquinas más suaves y sombra más rica. */
+            .sec-card {
+                border-radius: 1.3rem;
+                box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 20px 44px -32px rgba(16,24,40,.5);
+            }
+            .sec-head { background: linear-gradient(180deg,#ffffff,#fbfbf7); }
+
+            /* Botones de opción: blancos cómodos para el dedo (≥44px) y bien centrados. */
+            .chk-opt {
+                min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+                border-radius: .8rem; font-size: 12.5px;
+            }
+            .doc-na { min-height: 44px; display: inline-flex; align-items: center; border-radius: .8rem; }
+            .doc-date { min-height: 46px; border-radius: .8rem; }
+            .bulk-chip { min-height: 32px; display: inline-flex; align-items: center; }
+
+            /* Etiquetas un punto más legibles y con mejor interlineado. */
+            .chk-row-label { font-weight: 600; line-height: 1.35; }
+            .chk-row { padding: 13px 14px; }
+
+            /* Campos de texto: bordes más amables al tacto. */
+            .field-input { border-radius: .85rem; padding-top: .8rem; padding-bottom: .8rem; }
+        }
     </style>
 </head>
 <body class="text-gray-800 min-h-screen pb-10">
