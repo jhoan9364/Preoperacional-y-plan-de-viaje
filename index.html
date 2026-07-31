@@ -513,6 +513,7 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvZ3d5bm5tYm5pcHN2dXhhY3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwNDMwNDAsImV4cCI6MjA4OTYxOTA0MH0.RRUuljAe18p7FVE4SAjejMCv-4K2s5Dt31aZnnW6d6Y';
 
         const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const ROUTE_CARD_TOKEN = new URLSearchParams(window.location.search).get('t') || '';
 
         // =====================================================================
         //  POWER AUTOMATE WEBHOOK URL
@@ -675,6 +676,8 @@
             licenciaNA: false,    // "la licencia no aplica" (grúa/manlift sin licencia)
             planTipo: '',         // tipo de vehículo detectado para el plan (modo solo-plan)
             redirectedToPlan: false, // evita la redirección automática consecutiva si vuelve atrás
+            routeCardContext: null,  // programación y versión publicada vinculadas al token
+            routeCardOpened: false,  // evidencia previa al check de socialización
         };
 
         // Alerta de cierre involuntario
@@ -816,7 +819,7 @@
 
         function applyConductorLookup(row) {
             // Nombre del conductor: autocompletar al consultar cédula
-            if (row.conductor_nombre) {
+            if (row.conductor_nombre && !state.routeCardContext) {
                 const n = $('pf-conductor_nombre');
                 if (n) n.value = row.conductor_nombre;
             }
@@ -834,7 +837,7 @@
             if (row.licencia_vencimiento) { const v = $('pf-licencia_vencimiento'); if (v) v.value = row.licencia_vencimiento; }
 
             // Placas del último viaje: preguntar si desea cargarlas
-            if (row.placa_cabezote) {
+            if (row.placa_cabezote && !state.routeCardContext) {
                 const tanqueMsg = row.placa_tanque ? ` y tanque <b>${row.placa_tanque}</b>` : '';
                 const msg = `Tu último servicio lo prestaste con el vehículo placa <b>${row.placa_cabezote}</b>${tanqueMsg}.<br><br>¿Deseas utilizar este mismo vehículo?`;
                 
@@ -1742,6 +1745,34 @@
                     </div>
                 </div>
 
+                <div id="route-card-section" class="sec-card scroll-mt hidden">
+                    <div class="sec-head">
+                        <div class="sec-head-ic"><i class="fa-solid fa-map-location-dot"></i></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="sec-head-t">Tarjeta de Ruta asignada</div>
+                            <div id="route-card-subtitle" class="sec-head-s"></div>
+                        </div>
+                        <span class="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">Programada</span>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        <div class="grid sm:grid-cols-3 gap-3 rounded-xl bg-gray-50 p-3 text-xs">
+                            <div><span class="block text-gray-400 font-bold uppercase text-[9px]">Ruta</span><strong id="route-card-name" class="text-gray-800"></strong></div>
+                            <div><span class="block text-gray-400 font-bold uppercase text-[9px]">Documento</span><strong id="route-card-code" class="text-gray-800"></strong></div>
+                            <div><span class="block text-gray-400 font-bold uppercase text-[9px]">Métricas</span><strong id="route-card-metrics" class="text-gray-800"></strong></div>
+                        </div>
+                        <div class="grid sm:grid-cols-2 gap-2">
+                            <button type="button" id="btn-route-card-open" class="btn-brand font-bold rounded-xl text-sm px-4 py-3 flex items-center justify-center gap-2"><i class="fa-solid fa-book-open"></i> Consultar tarjeta</button>
+                            <button type="button" id="btn-route-card-download" class="btn-ghost font-bold rounded-xl text-sm px-4 py-3 flex items-center justify-center gap-2"><i class="fa-solid fa-file-arrow-down"></i> Descargar PDF</button>
+                        </div>
+                        <div id="route-card-detail" class="hidden rounded-xl border border-gray-200 bg-white p-4 space-y-3 text-xs text-gray-700"></div>
+                        <label class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+                            <input id="pf-route-card-ack" type="checkbox" disabled class="mt-0.5 h-4 w-4 shrink-0 accent-[#181818]">
+                            <span id="route-card-ack-text"></span>
+                        </label>
+                        <p id="route-card-open-hint" class="text-[11px] text-amber-700"><i class="fa-solid fa-circle-info"></i> Primero consulta o descarga la tarjeta; después podrás confirmar su socialización.</p>
+                    </div>
+                </div>
+
                 <div id="preop-grids" class="space-y-4">${PREOP_GRIDS.map(renderGrid).join('')}</div>
 
                 <div class="sec-card scroll-mt">
@@ -1770,6 +1801,7 @@
             // Estado inicial de avance: todo sin responder se marca en rojo suave.
             evaluateAllDocs();
             refreshCompletion();
+            if (state.routeCardContext) applyProgrammedContext();
         }
 
         /* ════════════════ CONSTRUCCIÓN DEL FORMULARIO PLAN DE VIAJE ════════════════ */
@@ -1822,7 +1854,231 @@
                 </div>`;
             // Estado inicial de avance: todo sin responder se marca en rojo suave.
             refreshCompletion();
+            if (state.routeCardContext) applyProgrammedContext();
         }
+
+        async function loadRouteCardContext(eventType = null) {
+            if (!ROUTE_CARD_TOKEN) return false;
+            try {
+                const body = { token: ROUTE_CARD_TOKEN };
+                if (eventType) body.event = eventType;
+                const { data, error } = await supabase.functions.invoke('route-card-public-context', { body });
+                if (error || !data?.service || !data?.route_card) {
+                    throw new Error(data?.error || error?.message || 'No fue posible validar el enlace.');
+                }
+                state.routeCardContext = data;
+                if (data.acknowledged) state.routeCardOpened = true;
+                renderRouteCardSection();
+                applyProgrammedContext();
+                return true;
+            } catch (error) {
+                console.error('Error cargando la tarjeta de ruta:', error);
+                showModal('El enlace de programación venció, fue reemplazado o no tiene una Tarjeta de Ruta publicada. Solicita a Operaciones un enlace nuevo.', 'error');
+                return false;
+            }
+        }
+
+        function appendRouteCardBlock(parent, title, lines) {
+            const values = (Array.isArray(lines) ? lines : [lines]).map(value => String(value || '').trim()).filter(Boolean);
+            if (!values.length) return;
+            const wrap = document.createElement('div');
+            const heading = document.createElement('h4');
+            heading.className = 'font-extrabold text-gray-900';
+            heading.textContent = title;
+            wrap.appendChild(heading);
+            values.forEach(value => {
+                const line = document.createElement('p');
+                line.className = 'mt-1 leading-relaxed';
+                line.textContent = value;
+                wrap.appendChild(line);
+            });
+            parent.appendChild(wrap);
+        }
+
+        function renderRouteCardSection() {
+            const context = state.routeCardContext;
+            const section = $('route-card-section');
+            if (!context || !section) return;
+            const card = context.route_card;
+            const content = card.contenido || {};
+            const route = content.route || {};
+            section.classList.remove('hidden');
+            $('route-card-subtitle').textContent = `${context.service.origen} → ${context.service.destino}`;
+            $('route-card-name').textContent = card.route_name || `${context.service.origen} - ${context.service.destino}`;
+            $('route-card-code').textContent = `${card.codigo_documento} · Versión ${card.numero_version}`;
+            const hours = card.duracion_minutos_snapshot ? `${(Number(card.duracion_minutos_snapshot) / 60).toLocaleString('es-CO')} h` : 'Sin tiempo';
+            $('route-card-metrics').textContent = `${card.km_snapshot ?? '—'} km · ${hours}`;
+            $('route-card-ack-text').textContent = card.acknowledgement_text;
+
+            const detail = $('route-card-detail');
+            detail.replaceChildren();
+            appendRouteCardBlock(detail, 'Ruta recomendada', route.recommended_corridor);
+            appendRouteCardBlock(detail, 'Ruta alterna', route.alternative_route);
+            appendRouteCardBlock(detail, 'Rutas bloqueadas', route.blocked_routes || []);
+            appendRouteCardBlock(detail, 'Puntos críticos', (content.critical_points || []).map(row => [row.location, row.risk, row.preventive_measure].filter(Boolean).join(' · ')));
+            appendRouteCardBlock(detail, 'Límites de velocidad', (content.speed_limits || []).map(row => `${row.label}: ${row.kmh} km/h${row.control ? ` · ${row.control}` : ''}`));
+            appendRouteCardBlock(detail, 'Contactos de contingencia', (content.emergency_contacts || []).map(row => `${row.entity}: ${row.phones}${row.coverage ? ` · ${row.coverage}` : ''}`));
+            (card.assets || []).filter(asset => asset.url).forEach(asset => {
+                const figure = document.createElement('figure');
+                figure.className = 'space-y-1';
+                const caption = document.createElement('figcaption');
+                caption.className = 'font-extrabold text-gray-900';
+                caption.textContent = asset.tipo === 'MAPA_RUTA' ? 'Mapa de ruta' : 'Puntos de inspección y contingencias';
+                const img = document.createElement('img');
+                img.src = asset.url;
+                img.alt = caption.textContent;
+                img.loading = 'lazy';
+                img.className = 'w-full rounded-xl border border-gray-200';
+                figure.append(caption, img);
+                detail.appendChild(figure);
+            });
+
+            const acknowledged = Boolean(context.acknowledged);
+            const checkbox = $('pf-route-card-ack');
+            checkbox.disabled = !state.routeCardOpened || acknowledged;
+            checkbox.checked = acknowledged || checkbox.checked;
+            $('route-card-open-hint').classList.toggle('hidden', state.routeCardOpened || acknowledged);
+            detail.classList.toggle('hidden', !state.routeCardOpened);
+        }
+
+        function applyProgrammedContext() {
+            const context = state.routeCardContext;
+            if (!context) return;
+            const service = context.service;
+            const setLocked = (form, id, value) => {
+                const input = form?.querySelector('#pf-' + id);
+                if (!input || value === null || value === undefined) return;
+                input.value = String(value);
+                input.readOnly = true;
+                input.classList.add('bg-gray-100', 'cursor-not-allowed');
+            };
+            const date = String(service.fecha || '').slice(0, 10);
+            const preop = $('form-preop');
+            setLocked(preop, 'fecha', date);
+            setLocked(preop, 'conductor_identificacion', service.conductor_documento);
+            setLocked(preop, 'conductor_nombre', service.conductor_nombre);
+            setLocked(preop, 'placa_cabezote', service.placa);
+            const plan = $('form-plan');
+            setLocked(plan, 'fecha', date);
+            setLocked(plan, 'conductor_nombre_plan', service.conductor_nombre);
+            setLocked(plan, 'placa_cabezote', service.placa);
+            setLocked(plan, 'ruta_origen', service.origen);
+            setLocked(plan, 'ruta_destino', service.destino);
+            if (preop?.querySelector('#pf-conductor_identificacion')) lookupConductor(service.conductor_documento);
+            if (preop?.querySelector('#pf-placa_cabezote')) {
+                lookupVehiculo(service.placa);
+                fetchUltimoKm(service.placa);
+            }
+            renderRouteCardSection();
+        }
+
+        async function routeCardImageAsJpeg(url) {
+            const response = await fetch(url, { cache: 'no-store' });
+            if (!response.ok) throw new Error('No se pudo descargar uno de los mapas.');
+            const blob = await response.blob();
+            const objectUrl = URL.createObjectURL(blob);
+            try {
+                const img = await new Promise((resolve, reject) => {
+                    const element = new Image();
+                    element.onload = () => resolve(element);
+                    element.onerror = reject;
+                    element.src = objectUrl;
+                });
+                const maxSide = 1800;
+                const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+                canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                return canvas.toDataURL('image/jpeg', 0.82);
+            } finally {
+                URL.revokeObjectURL(objectUrl);
+            }
+        }
+
+        async function downloadAssignedRouteCard() {
+            if (!state.routeCardContext) return;
+            const button = $('btn-route-card-download');
+            const original = button?.innerHTML;
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generando PDF…';
+            }
+            try {
+                if (!await loadRouteCardContext('DOWNLOAD')) return;
+                state.routeCardOpened = true;
+                renderRouteCardSection();
+                const { jsPDF } = await import('https://esm.sh/jspdf@2.5.2');
+                const context = state.routeCardContext;
+                const card = context.route_card;
+                const content = card.contenido || {};
+                const route = content.route || {};
+                const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+                let y = 16;
+                const ensureSpace = height => { if (y + height > 282) { doc.addPage(); y = 16; } };
+                const write = (title, values) => {
+                    const rows = (Array.isArray(values) ? values : [values]).map(value => String(value || '').trim()).filter(Boolean);
+                    if (!rows.length) return;
+                    ensureSpace(14);
+                    doc.setFont('helvetica', 'bold'); doc.setFontSize(11); doc.text(title, 14, y); y += 5;
+                    doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+                    rows.forEach(value => {
+                        const lines = doc.splitTextToSize(value, 180);
+                        ensureSpace(lines.length * 4 + 2);
+                        doc.text(lines, 14, y); y += lines.length * 4 + 2;
+                    });
+                };
+                doc.setFillColor(24, 24, 24); doc.rect(0, 0, 210, 28, 'F');
+                doc.setTextColor(255, 210, 46); doc.setFont('helvetica', 'bold'); doc.setFontSize(17);
+                doc.text('TRANSHICOL · TARJETA DE RUTA', 14, 12);
+                doc.setTextColor(255, 255, 255); doc.setFontSize(9);
+                doc.text(`${card.codigo_documento} · Versión ${card.numero_version} · ${card.fecha_revision || ''}`, 14, 20);
+                doc.setTextColor(25, 25, 25); y = 37;
+                write('Ruta / operación', card.route_name || `${context.service.origen} - ${context.service.destino}`);
+                write('Métricas operativas', `${card.km_snapshot ?? '—'} km · ${card.duracion_minutos_snapshot ?? '—'} minutos · ${card.pausas_activas ?? 0} pausas activas`);
+                write('Poblaciones', route.populations || []);
+                write('Ruta recomendada', route.recommended_corridor);
+                write('Ruta alterna', route.alternative_route);
+                write('Rutas bloqueadas', route.blocked_routes || []);
+                write('Sitios autorizados', (content.authorized_stops || []).map(row => [row.name, row.location, row.function, row.observations].filter(Boolean).join(' · ')));
+                write('Límites de velocidad', (content.speed_limits || []).map(row => `${row.label}: ${row.kmh} km/h${row.control ? ` · ${row.control}` : ''}`));
+                write('Puntos críticos', (content.critical_points || []).map(row => [row.location, row.risk, row.condition, row.preventive_measure].filter(Boolean).join(' · ')));
+                write('Recomendaciones', (content.road_recommendations || []).map(row => row.text || row));
+                write('Directorio de contingencias', (content.emergency_contacts || []).map(row => `${row.entity}: ${row.phones}${row.coverage ? ` · ${row.coverage}` : ''}`));
+                for (const asset of (card.assets || []).filter(item => item.url)) {
+                    try {
+                        const jpeg = await routeCardImageAsJpeg(asset.url);
+                        doc.addPage();
+                        doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+                        doc.text(asset.tipo === 'MAPA_RUTA' ? 'Mapa de ruta' : 'Puntos de inspección y contingencias', 14, 16);
+                        const props = doc.getImageProperties(jpeg);
+                        const width = 182;
+                        const height = Math.min(255, width * props.height / props.width);
+                        doc.addImage(jpeg, 'JPEG', 14, 23, width, height, undefined, 'FAST');
+                    } catch (imageError) {
+                        console.warn('Mapa omitido del PDF:', imageError);
+                    }
+                }
+                const safeCode = String(card.codigo_documento || 'TARJETA-RUTA').replace(/[^A-Z0-9_-]+/gi, '-');
+                doc.save(`${safeCode}_V${card.numero_version}.pdf`);
+            } catch (error) {
+                console.error('Error generando PDF:', error);
+                showModal('No pudimos generar la Tarjeta de Ruta en PDF. Revisa tu conexión e inténtalo de nuevo.', 'error');
+            } finally {
+                if (button) { button.disabled = false; button.innerHTML = original; }
+            }
+        }
+
+        document.addEventListener('click', async event => {
+            if (event.target.closest('#btn-route-card-open')) {
+                if (await loadRouteCardContext('OPEN')) {
+                    state.routeCardOpened = true;
+                    renderRouteCardSection();
+                    $('route-card-detail')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+            if (event.target.closest('#btn-route-card-download')) await downloadAssignedRouteCard();
+        });
 
         /* En modo "solo plan" no venimos del preoperacional, así que el tipo de vehículo
            se detecta por la placa. Si cambia la clase (grúa/manlift ↔ estándar) se
@@ -1967,6 +2223,15 @@
             const get = (id) => (fp.querySelector('#pf-' + id)?.value || '').trim();
             const up  = (id) => get(id).toUpperCase();
 
+            if (state.routeCardContext) {
+                const acknowledged = fp.querySelector('#pf-route-card-ack')?.checked;
+                if (!state.routeCardOpened || !acknowledged) {
+                    $('route-card-section')?.scrollIntoView({ behavior:'smooth', block:'center' });
+                    showModal('Consulta o descarga la Tarjeta de Ruta y confirma que fue socializada antes de continuar.', 'error');
+                    return;
+                }
+            }
+
             // Validar formato de placa del cabezote: letras y números pegados, sin espacios ni guiones
             const placaCabezote = up('placa_cabezote');
             const formatRegex = /^[A-Z0-9]+$/;
@@ -2110,11 +2375,20 @@
             payload.fotos = photoUrls;
 
             try {
-                const preopId = generateUUID();
-                payload.id = preopId;
-                const { error } = await supabase.from('pv_preoperacionales').insert(payload);
-                if (error) throw error;
-                state.preopId = preopId;
+                if (state.routeCardContext) {
+                    const { data, error } = await supabase.functions.invoke('route-card-public-submit', {
+                        body: { token: ROUTE_CARD_TOKEN, action: 'PREOP', payload, acknowledged: true }
+                    });
+                    if (error || !data?.id) throw new Error(data?.error || error?.message || 'No se pudo registrar el preoperacional.');
+                    state.preopId = data.id;
+                    state.routeCardContext.acknowledged = true;
+                } else {
+                    const preopId = generateUUID();
+                    payload.id = preopId;
+                    const { error } = await supabase.from('pv_preoperacionales').insert(payload);
+                    if (error) throw error;
+                    state.preopId = preopId;
+                }
                 if (apto) {
                     state.redirectedToPlan = true;
                     startPlan(true);
@@ -2328,8 +2602,15 @@
             payload.fotos = photoUrls;
 
             try {
-                const { error } = await supabase.from('pv_planes_viaje').insert(payload);
-                if (error) throw error;
+                if (state.routeCardContext) {
+                    const { data, error } = await supabase.functions.invoke('route-card-public-submit', {
+                        body: { token: ROUTE_CARD_TOKEN, action: 'PLAN', payload }
+                    });
+                    if (error || !data?.id) throw new Error(data?.error || error?.message || 'No se pudo registrar el plan de viaje.');
+                } else {
+                    const { error } = await supabase.from('pv_planes_viaje').insert(payload);
+                    if (error) throw error;
+                }
                 state.planCompletado = true;
                 finishThanks(false);
             } catch (err) {
@@ -2439,7 +2720,24 @@
             s.fecha = el.value; s.na = false;
             evaluateAllDocs();
         }
-        show('welcome');
+        async function initializeJourney() {
+            if (!ROUTE_CARD_TOKEN) {
+                show('welcome');
+                return;
+            }
+            $('btn-only-plan')?.classList.add('hidden');
+            $('btn-new')?.classList.add('hidden');
+            const ok = await loadRouteCardContext();
+            if (!ok) {
+                show('welcome');
+                return;
+            }
+            buildPreopForm();
+            buildPlanForm();
+            applyProgrammedContext();
+            show('preop');
+        }
+        initializeJourney();
     </script>
 </body>
 </html>
