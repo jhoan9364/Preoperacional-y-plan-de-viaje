@@ -664,6 +664,7 @@
             preopId: null,
             planCompletado: false, // evita alerta de cierre involuntario al finalizar todo
             lastLookup: null, // ultima cedula consultada (evita consultas repetidas)
+            conductorDocs: null, // documentos del conductor recuperados por cédula (se reponen si cambian las listas)
             lastVehiculoLookup: null, // ultima placa consultada (evita consultas repetidas)
             kmRef: null,      // referencia de km de la placa { ultimo_km, ultima_fecha, promedio_diario, num_registros }
             lastKmLookup: null, // ultima placa consultada para km (evita consultas repetidas)
@@ -868,39 +869,45 @@
                 });
             }
 
-            // Documentos del conductor:
-            if (row.documentos_conductor && Array.isArray(row.documentos_conductor)) {
-                row.documentos_conductor.forEach((doc) => {
-                    const idx = PREOP_GRIDS[0].items.indexOf(doc.item);
-                    if (idx !== -1) {
-                        const s = docState('documentos_conductor', idx);
-                        if (doc.valor === 'NO APLICA') {
-                            s.na = true;
-                            s.fecha = '';
-                        } else if (doc.fecha) {
-                            s.na = false;
-                            s.fecha = doc.fecha;
-                        } else {
-                            return;
-                        }
-                        const rowEl = document.querySelector(`.chk-row[data-rowgrid="documentos_conductor"][data-rowi="${idx}"]`);
-                        const dateEl = rowEl?.querySelector('.doc-date');
-                        const naBtn = rowEl?.querySelector('.doc-na');
-                        if (dateEl) {
-                            dateEl.value = s.fecha;
-                            dateEl.disabled = s.na;
-                            dateEl.classList.toggle('doc-date-off', s.na);
-                        }
-                        if (naBtn) naBtn.classList.toggle('is-on', s.na);
-                    }
-                });
-            }
+            // Documentos del conductor (se guardan para reponerlos si las listas se reconstruyen)
+            state.conductorDocs = Array.isArray(row.documentos_conductor) ? row.documentos_conductor : null;
+            applyConductorDocs(state.conductorDocs);
 
             const hint = $('lookup-hint');
             hint?.classList.remove('hidden'); hint?.classList.add('inline-flex');
 
             evaluateLicencia();
             evaluateAllDocs();
+        }
+
+        // Pinta en la lista las fechas de vencimiento que trajo la búsqueda por cédula.
+        // Empareja por nombre del ítem, así sirve igual con la lista normal y la de grúa/manlift.
+        function applyConductorDocs(docs) {
+            if (!Array.isArray(docs)) return;
+            docs.forEach((doc) => {
+                const idx = PREOP_GRIDS[0].items.indexOf(doc.item);
+                if (idx !== -1) {
+                    const s = docState('documentos_conductor', idx);
+                    if (doc.valor === 'NO APLICA') {
+                        s.na = true;
+                        s.fecha = '';
+                    } else if (doc.fecha) {
+                        s.na = false;
+                        s.fecha = doc.fecha;
+                    } else {
+                        return;
+                    }
+                    const rowEl = document.querySelector(`.chk-row[data-rowgrid="documentos_conductor"][data-rowi="${idx}"]`);
+                    const dateEl = rowEl?.querySelector('.doc-date');
+                    const naBtn = rowEl?.querySelector('.doc-na');
+                    if (dateEl) {
+                        dateEl.value = s.fecha;
+                        dateEl.disabled = s.na;
+                        dateEl.classList.toggle('doc-date-off', s.na);
+                    }
+                    if (naBtn) naBtn.classList.toggle('is-on', s.na);
+                }
+            });
         }
 
         /* ════════════════ AUTOCOMPLETAR POR PLACA DEL VEHÍCULO ════════════════ */
@@ -1626,6 +1633,7 @@
             const cont = $('preop-grids');
             if (cont) {
                 cont.innerHTML = PREOP_GRIDS.map(renderGrid).join('');
+                applyConductorDocs(state.conductorDocs); // no perder las fechas ya recuperadas por cédula
                 evaluateAllDocs();
                 refreshCompletion();
             }
@@ -1694,7 +1702,7 @@
         }
 
         function buildPreopForm() {
-            state.lastLookup = null; state.licenciaVencida = false;
+            state.lastLookup = null; state.licenciaVencida = false; state.conductorDocs = null;
             state.docDates = {}; state.docsVencidos = false;
             state.preopGruaMode = false; state.licenciaNA = false;
             PREOP_GRIDS = buildPreopGrids(false);
@@ -2204,7 +2212,7 @@
         function resetAll() {
             state.grids = {}; state.preop = null; state.preopId = null;
             state.planCompletado = false;
-            state.lastLookup = null; state.lastVehiculoLookup = null; state.licenciaVencida = false;
+            state.lastLookup = null; state.lastVehiculoLookup = null; state.licenciaVencida = false; state.conductorDocs = null;
             state.docDates = {}; state.docsVencidos = false;
             state.preopPhotos = []; state.planPhotos = [];
             state.preopGruaMode = false; state.licenciaNA = false; state.planTipo = '';
