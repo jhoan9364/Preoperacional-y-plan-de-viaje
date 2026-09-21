@@ -801,21 +801,40 @@
 
         /* ════════════════ AUTOCOMPLETAR POR CÉDULA + CONTROL DE LICENCIA ════════════════
            El formato solo puede INSERTAR (RLS). Para recuperar el último dato del
-           conductor usamos la función segura public.pv_lookup_conductor (migración
-           0016), que devuelve SOLO el último registro de esa cédula. */
+           conductor usamos la función segura public.pv_lookup_conductor (edge function
+           pv-lookup-conductor), que lee SOLO lo que diligenciaron los conductores
+           (nunca lo cargado en masivo) y trae cada documento de su último registro
+           con fecha. En la BD lo vigila pv_autorrelleno_autoprueba (migración 0029). */
+
+        // Llama una consulta del autorrelleno y reintenta una vez si falla la red o el
+        // servidor. Devuelve los datos, o undefined si no se pudo: el formulario sigue
+        // funcionando sin autorrelleno y el conductor diligencia a mano.
+        async function invokeLookup(fn, body) {
+            for (let intento = 0; intento < 2; intento++) {
+                try {
+                    const { data, error } = await supabase.functions.invoke(fn, { body });
+                    if (!error) return data;
+                    console.warn(`${fn}:`, error);
+                } catch (err) { console.warn(`${fn}:`, err); }
+                if (intento === 0) await new Promise((r) => setTimeout(r, 1200));
+            }
+            return undefined;
+        }
+
         async function lookupConductor(raw) {
             const ced = String(raw || '').replace(/\D/g, '');
             if (ced.length < 4) return;
             if (state.lastLookup === ced) return;   // no repetir la misma consulta
             state.lastLookup = ced;
-            try {
-                const { data, error } = await supabase.functions.invoke('pv-lookup-conductor', {
-                    body: { p_identificacion: ced }
-                });
-                if (error) { console.warn('lookup conductor:', error); return; }
-                const row = Array.isArray(data) ? data[0] : data;
-                if (row) applyConductorLookup(row);
-            } catch (err) { console.warn('lookup conductor:', err); }
+            const data = await invokeLookup('pv-lookup-conductor', { p_identificacion: ced });
+            if (data === undefined) {               // falló: dejar que se vuelva a intentar
+                if (state.lastLookup === ced) state.lastLookup = null;
+                return;
+            }
+            // Respuesta tardía: el conductor ya cambió la cédula → no pisar lo que escribió
+            if (String($('pf-conductor_identificacion')?.value || '').replace(/\D/g, '') !== ced) return;
+            const row = Array.isArray(data) ? data[0] : data;
+            if (row) applyConductorLookup(row);
         }
 
         function applyConductorLookup(row) {
@@ -935,10 +954,14 @@
             if (state.lastVehiculoLookup === placa) return; // evitar consultas repetidas
             state.lastVehiculoLookup = placa;
             try {
-                const { data, error } = await supabase.functions.invoke('pv-lookup-vehiculo', {
-                    body: { p_placa: placa }
-                });
-                if (error) { console.warn('lookup vehiculo:', error); return; }
+                const data = await invokeLookup('pv-lookup-vehiculo', { p_placa: placa });
+                if (data === undefined) {               // falló: dejar que se vuelva a intentar
+                    if (state.lastVehiculoLookup === placa) state.lastVehiculoLookup = null;
+                    return;
+                }
+                // Respuesta tardía: la placa ya cambió → no aplicar datos de otro vehículo
+                const placaActual = String(document.querySelector('#form-preop #pf-placa_cabezote')?.value || '').replace(/\s/g, '').toUpperCase();
+                if (placaActual && placaActual !== placa) return;
                 const row = Array.isArray(data) ? data[0] : data;
                 if (row && row.encontrado_maestro) {
                     applyVehiculoLookup(row, skipPlacaTanque);
@@ -1044,10 +1067,11 @@
             state.lastKmLookup = placa;
             state.kmRef = null;
             try {
-                const { data, error } = await supabase.functions.invoke('pv-lookup-kilometraje', {
-                    body: { p_placa: placa }
-                });
-                if (error) { console.warn('lookup kilometraje:', error); return; }
+                const data = await invokeLookup('pv-lookup-kilometraje', { p_placa: placa });
+                if (data === undefined) {               // falló: ensureKmRef lo reintenta al guardar
+                    if (state.lastKmLookup === placa) state.lastKmLookup = null;
+                    return;
+                }
                 const row = Array.isArray(data) ? data[0] : data;
                 if (row && row.ultimo_km != null) {
                     state.kmRef = {
