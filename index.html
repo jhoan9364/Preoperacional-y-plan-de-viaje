@@ -2126,19 +2126,27 @@
             refreshCompletion();
         }
         async function detectPlanTipo(raw) {
-            if (state.preop?.tipo_vehiculo) return;   // si venimos del preoperacional, ya se conoce
             const placa = String(raw || '').replace(/\s/g, '').toUpperCase();
             if (placa.length < 5 || placa === 'DEMO') return;
+            if (state.lastPlanVehiculoLookup === placa) return;
+            state.lastPlanVehiculoLookup = placa;
             try {
-                const { data, error } = await supabase.functions.invoke('pv-lookup-vehiculo', {
-                    body: { p_placa: placa }
-                });
-                if (error) return;
+                const data = await invokeLookup('pv-lookup-vehiculo', { p_placa: placa });
+                if (data === undefined) {
+                    if (state.lastPlanVehiculoLookup === placa) state.lastPlanVehiculoLookup = null;
+                    return;
+                }
                 const row = Array.isArray(data) ? data[0] : data;
-                const tipo = (row && row.encontrado_maestro) ? row.tipo_vehiculo : '';
+                if (!row || !row.encontrado_maestro) return;
+                const tipo = row.tipo_vehiculo || '';
                 const cambioClase = isGruaManlift(tipo) !== isGruaManlift(state.planTipo);
                 state.planTipo = tipo;
                 if (cambioClase) rebuildPlanPreserving();
+                if (row.placa_tanque) {
+                    const fpl = $('form-plan');
+                    const tanEl = fpl?.querySelector('#pf-placa_tanque');
+                    if (tanEl) tanEl.value = row.placa_tanque;
+                }
             } catch (err) { console.warn('detect plan tipo:', err); }
         }
 
@@ -2500,6 +2508,9 @@
         /* ════════════════ INICIAR PLAN DE VIAJE (con prefill) ════════════════ */
         function startPlan(fromPreop) {
             buildPlanForm();
+            if (state.routeCardContext) {
+                applyProgrammedContext();
+            }
             // IMPORTANTE: preop y plan comparten ids (pf-fecha, pf-placa_cabezote,
             // pf-placa_tanque). Hay que escribir SOLO en el formulario del plan.
             const fpl = $('form-plan');
@@ -2509,7 +2520,7 @@
                 setP('fecha', state.preop.fecha || '');
                 setP('kilometraje_actual', state.preop.kilometraje || '');
                 setP('placa_cabezote', state.preop.placa_cabezote || '');
-                // Placa del trailer/tanque: solo si el conductor la diligenció (si no, vacía).
+                // Placa del trailer/tanque: mantener lo diligenciado en preop
                 setP('placa_tanque', state.preop.placa_tanque || '');
                 setP('conductor_nombre_plan', state.preop.conductor_nombre || '');
                 const hint = $('plan-copy-hint');
@@ -2553,10 +2564,8 @@
                 btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validando placa…';
                 let encontrado = false;
                 try {
-                    const { data, error } = await supabase.functions.invoke('pv-lookup-vehiculo', {
-                        body: { p_placa: placaCabezote }
-                    });
-                    if (!error && data) {
+                    const data = await invokeLookup('pv-lookup-vehiculo', { p_placa: placaCabezote });
+                    if (data) {
                         const row = Array.isArray(data) ? data[0] : data;
                         if (row && row.encontrado_maestro) {
                             encontrado = true;
