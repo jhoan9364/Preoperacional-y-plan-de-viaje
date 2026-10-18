@@ -821,19 +821,49 @@
             return undefined;
         }
 
+        // Reto del autorrelleno (18-oct-2026): con solo la cédula la función ya no
+        // devuelve datos. Si hay registros anteriores, el conductor confirma la placa
+        // que maneja y el servidor la compara con la de su último registro; si no
+        // coincide (o cancela), se diligencia a mano como un usuario nuevo.
+        const normPlacaReto = (v) => String(v || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+        function pedirPlacaReto() {
+            return new Promise((resolve) => {
+                const texto = 'Encontramos registros anteriores con tu cédula.<br>Para recuperar tus datos, <b>¿qué placa manejas?</b>'
+                    + '<input id="reto-placa" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="8" placeholder="ABC123"'
+                    + ' class="mt-3 w-full text-center text-lg font-extrabold tracking-[0.2em] uppercase border-2 border-gray-200 rounded-xl py-2.5 px-3 focus:outline-none focus:border-amber-400">';
+                showConfirmModal(texto, () => resolve(normPlacaReto($('reto-placa')?.value)), () => resolve(null), 'Recuperar mis datos', 'Llenar a mano');
+                const inp = $('reto-placa');
+                if (!inp) return;
+                inp.addEventListener('input', () => { const v = normPlacaReto(inp.value); if (inp.value !== v) inp.value = v; });
+                inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('modal-confirm-btn').click(); } });
+                setTimeout(() => inp.focus(), 50);
+            });
+        }
+
         async function lookupConductor(raw) {
             const ced = String(raw || '').replace(/\D/g, '');
             if (ced.length < 4) return;
             if (state.lastLookup === ced) return;   // no repetir la misma consulta
             state.lastLookup = ced;
-            const data = await invokeLookup('pv-lookup-conductor', { p_identificacion: ced });
-            if (data === undefined) {               // falló: dejar que se vuelva a intentar
+            // Respuesta tardía: el conductor ya cambió la cédula → no pisar lo que escribió
+            const sigueIgual = () => String($('pf-conductor_identificacion')?.value || '').replace(/\D/g, '') === ced;
+            const paso1 = await invokeLookup('pv-lookup-conductor', { p_identificacion: ced });
+            if (paso1 === undefined) {              // falló: dejar que se vuelva a intentar
                 if (state.lastLookup === ced) state.lastLookup = null;
                 return;
             }
-            // Respuesta tardía: el conductor ya cambió la cédula → no pisar lo que escribió
-            if (String($('pf-conductor_identificacion')?.value || '').replace(/\D/g, '') !== ced) return;
-            const row = Array.isArray(data) ? data[0] : data;
+            if (!sigueIgual() || paso1?.exists !== true) return;   // sin registros: llenado manual
+            // Con tarjeta de ruta, la placa ya viene fijada por el servicio programado.
+            const placa = state.routeCardContext ? normPlacaReto(state.routeCardContext.service?.placa) : await pedirPlacaReto();
+            if (!placa || !sigueIgual()) return;
+            const data = await invokeLookup('pv-lookup-conductor', { p_identificacion: ced, p_placa: placa });
+            if (data === undefined) {
+                if (state.lastLookup === ced) state.lastLookup = null;
+                return;
+            }
+            if (!sigueIgual()) return;
+            const row = Array.isArray(data) ? data[0] : null;   // { found: false } → llenado manual
             if (row) applyConductorLookup(row);
         }
 
@@ -856,36 +886,20 @@
             if (row.licencia_categoria) { const c = $('pf-licencia_categoria'); if (c) c.value = row.licencia_categoria; }
             if (row.licencia_vencimiento) { const v = $('pf-licencia_vencimiento'); if (v) v.value = row.licencia_vencimiento; }
 
-            // Placas del último viaje: preguntar si desea cargarlas
+            // Placas: el conductor acaba de confirmar la del cabezote en el reto, así
+            // que se llenan directo, con el tanque de su último servicio (decisión del
+            // 18-oct); si cambió de tanque, lo corrige en el campo.
             if (row.placa_cabezote && !state.routeCardContext) {
-                const tanqueMsg = row.placa_tanque ? ` y tanque <b>${row.placa_tanque}</b>` : '';
-                const msg = `Tu último servicio lo prestaste con el vehículo placa <b>${row.placa_cabezote}</b>${tanqueMsg}.<br><br>¿Deseas utilizar este mismo vehículo?`;
-                
-                showConfirmModal(msg, () => {
-                    // SI: autocompletar
-                    const cabEl = $('pf-placa_cabezote');
-                    if (cabEl) {
-                        cabEl.value = row.placa_cabezote;
-                        lookupVehiculo(row.placa_cabezote, true);
-                        fetchUltimoKm(row.placa_cabezote); // precargar referencia de km (autocompletar no dispara input)
-                    }
-                    if (row.placa_tanque) {
-                        const tanEl = $('pf-placa_tanque');
-                        if (tanEl) tanEl.value = row.placa_tanque;
-                    }
-                }, () => {
-                    // NO: limpiar campos para ingresar manualmente
-                    const cabEl = $('pf-placa_cabezote');
-                    if (cabEl) cabEl.value = '';
+                const cabEl = $('pf-placa_cabezote');
+                if (cabEl) {
+                    cabEl.value = row.placa_cabezote;
+                    lookupVehiculo(row.placa_cabezote, true);
+                    fetchUltimoKm(row.placa_cabezote); // precargar referencia de km (autocompletar no dispara input)
+                }
+                if (row.placa_tanque) {
                     const tanEl = $('pf-placa_tanque');
-                    if (tanEl) tanEl.value = '';
-                    const typeEl = $('pf-tipo_vehiculo');
-                    if (typeEl) {
-                        typeEl.value = '';
-                        typeEl.disabled = false;
-                        typeEl.classList.remove('bg-gray-100', 'cursor-not-allowed');
-                    }
-                });
+                    if (tanEl) tanEl.value = row.placa_tanque;
+                }
             }
 
             // Documentos del conductor (se guardan para reponerlos si las listas se reconstruyen)
