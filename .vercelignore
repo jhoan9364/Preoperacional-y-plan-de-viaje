@@ -1,0 +1,5 @@
+# Herramientas del repo: no se publican (arranque seguro F2, 2026-11-07)
+.githooks
+scripts
+.gitignore
+.vercelignore

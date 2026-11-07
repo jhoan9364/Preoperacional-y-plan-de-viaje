@@ -1,0 +1,30 @@
+#!/bin/sh
+# Barrera automática contra el commit de credenciales (plantilla de la skill
+# arranque-seguro; requiere scripts/check-tracked-secrets.mjs en la raíz del repo).
+#
+# Por qué existe: en Portal Orocam un PAT de Supabase entró al repositorio dentro
+# de una entrada de permisos `Bash(curl ... -H 'Authorization: Bearer ...')` que
+# Claude Code guardó en `.claude/settings.json`. El guardián que lo habría
+# detectado ya existía, pero era manual: había que acordarse de correrlo.
+# Un control que depende de la memoria no es un control. Este hook lo vuelve
+# automático sobre lo que está a punto de commitearse.
+#
+# Solo revisa el ÍNDICE (--staged): es instantáneo y no molesta al trabajo diario.
+# Instalado con:  git config core.hooksPath .githooks
+#
+# Si alguna vez bloquea un falso positivo, la salida indica archivo y tipo. La
+# vía correcta es retirar el valor o marcarlo como plantilla (CLAVE, XXXX, TU_...),
+# no saltarse el hook: `git commit --no-verify` existe, pero deja pasar secretos.
+
+if ! command -v node >/dev/null 2>&1; then
+  echo "pre-commit: no se encontró Node; no se pudo verificar secretos." >&2
+  echo "            Instala Node o usa --no-verify asumiendo el riesgo." >&2
+  exit 1
+fi
+
+node "$(git rev-parse --show-toplevel)/scripts/check-tracked-secrets.mjs" --staged || {
+  echo "" >&2
+  echo "COMMIT BLOQUEADO: hay una posible credencial en los archivos preparados." >&2
+  echo "Retírala del archivo y, si llegó a existir de verdad, revócala en su proveedor." >&2
+  exit 1
+}

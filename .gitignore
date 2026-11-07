@@ -1,0 +1,17 @@
+# Arranque seguro F2 (2026-11-07): secretos y archivos locales fuera de Git
+.env
+.env.*
+!.env*.example
+.mcp.json
+.claude/settings.local.json
+**/CLAUDE.local.md
+
+# Logs, respaldos y salidas
+*.log
+*.bak
+*.backup-*
+docs/traspasos/*/salidas/
+
+# Herramientas locales
+node_modules/
+.vercel/
